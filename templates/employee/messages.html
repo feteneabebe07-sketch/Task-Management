@@ -62,29 +62,140 @@
         color: #666;
         border: 1px solid #e2e8f0;
     }
+
+    /* Mobile sidebar toggle */
+    .mobile-conversations-toggle {
+        display: none;
+    }
+
+    @media (max-width: 768px) {
+        .mobile-conversations-toggle {
+            display: flex;
+        }
+        
+        .conversations-sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 40;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .conversations-sidebar.active {
+            transform: translateX(0);
+        }
+        
+        .chat-area.active {
+            display: flex;
+        }
+        
+        .chat-area {
+            width: 100%;
+        }
+        
+        .message-sent, .message-received {
+            max-width: 90%;
+        }
+        
+        .team-member-item {
+            padding: 0.5rem !important;
+        }
+        
+        .team-member-item h6 {
+            font-size: 0.875rem !important;
+        }
+        
+        .start-chat-btn {
+            padding: 0.25rem 0.5rem !important;
+            font-size: 0.75rem !important;
+        }
+        
+        .modal-content {
+            margin: 1rem;
+            max-height: calc(100vh - 2rem);
+            overflow-y: auto;
+        }
+        
+        .filter-buttons {
+            flex-wrap: wrap;
+            gap: 0.25rem;
+        }
+        
+        .filter-buttons button {
+            padding: 0.375rem 0.75rem !important;
+            font-size: 0.75rem !important;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .message-input-container {
+            padding: 0.75rem !important;
+        }
+        
+        .message-input {
+            padding: 0.5rem !important;
+            padding-right: 2.5rem !important;
+        }
+        
+        .chat-header {
+            padding: 0.75rem !important;
+        }
+        
+        .conversation-item {
+            padding: 0.75rem !important;
+        }
+        
+        .avatar-large {
+            width: 2.5rem !important;
+            height: 2.5rem !important;
+            font-size: 0.875rem !important;
+            margin-right: 0.5rem !important;
+        }
+        
+        .avatar-small {
+            width: 1.5rem !important;
+            height: 1.5rem !important;
+            font-size: 0.625rem !important;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="flex-1 flex overflow-hidden bg-gray-50">
+<div class="flex-1 flex overflow-hidden bg-gray-50 relative">
+    <!-- Mobile Toggle Button -->
+    <button id="mobileConversationsToggle" class="mobile-conversations-toggle fixed top-4 left-4 z-30 md:hidden bg-dark-teal text-white p-2 rounded-full shadow-lg">
+        <i class="fas fa-comments"></i>
+    </button>
+    
     <!-- Conversations Sidebar -->
-    <div class="w-1/3 border-r border-gray-200 bg-white flex flex-col">
+    <div id="conversationsSidebar" class="conversations-sidebar w-full md:w-1/3 lg:w-1/4 xl:w-1/3 border-r border-gray-200 bg-white flex flex-col">
+        <!-- Close Button for Mobile -->
+        <button id="closeSidebar" class="absolute top-4 right-4 z-10 md:hidden bg-dark-teal text-white p-2 rounded-full">
+            <i class="fas fa-times"></i>
+        </button>
+        
         <!-- Conversations Header -->
         <div class="p-4 border-b border-gray-200">
             <h3 class="font-semibold text-ink-black mb-3">Conversations</h3>
             <div class="relative mb-3">
                 <input type="text" id="searchConversations" placeholder="Search conversations..." 
-                       class="w-full p-2 pl-10 border border-gray-300 rounded-lg">
+                       class="w-full p-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-dark-teal">
                 <i class="fas fa-search absolute left-3 top-2.5 text-gray-400"></i>
             </div>
-            <div class="flex justify-between">
-                <div class="flex space-x-2">
+            <div class="flex justify-between filter-buttons">
+                <div class="flex flex-wrap gap-1">
                     <button id="filterAll" class="px-3 py-1 bg-dark-teal text-white rounded-full text-sm transition">All</button>
                     <button id="filterUnread" class="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200 transition">Unread</button>
                     <button id="filterOnline" class="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200 transition">Online</button>
                 </div>
-                <button id="newMessageBtn" class="px-3 py-1 bg-dark-teal text-white rounded-lg flex items-center">
-                    <i class="fas fa-plus mr-2"></i>New
+                <button id="newMessageBtn" class="px-3 py-1 bg-dark-teal text-white rounded-lg flex items-center text-sm">
+                    <i class="fas fa-plus mr-1 md:mr-2"></i>
+                    <span class="hidden md:inline">New</span>
                 </button>
             </div>
         </div>
@@ -100,7 +211,7 @@
                      data-unread="{{ conv.unread_count }}">
                     <div class="flex items-start">
                         <div class="relative">
-                            <div class="w-12 h-12 rounded-full {{ conv.color }} flex items-center justify-center text-white font-bold text-lg mr-3">
+                            <div class="w-12 h-12 rounded-full {{ conv.color }} flex items-center justify-center text-white font-bold text-lg mr-3 avatar-large">
                                 {{ conv.initials }}
                             </div>
                             {% if conv.is_online %}
@@ -109,11 +220,11 @@
                         </div>
                         <div class="flex-1 min-w-0">
                             <div class="flex justify-between items-start">
-                                <h4 class="font-medium text-ink-black truncate">{{ conv.name }}</h4>
+                                <h4 class="font-medium text-ink-black truncate text-sm md:text-base">{{ conv.name }}</h4>
                                 <span class="text-xs text-gray-500 whitespace-nowrap">{{ conv.last_message_time|timesince }} ago</span>
                             </div>
                             <p class="text-sm text-gray-600 truncate mt-1">
-                                {{ conv.last_message|truncatechars:50 }}
+                                {{ conv.last_message|truncatechars:40 }}
                             </p>
                             <div class="flex items-center justify-between mt-2">
                                 {% if conv.task_tag %}
@@ -154,14 +265,14 @@
                              data-user-id="{{ pm.id }}"
                              data-name="{{ pm.get_full_name|default:pm.username }}">
                             <div class="flex items-center">
-                                <div class="w-8 h-8 rounded-full bg-dark-teal flex items-center justify-center text-white text-sm font-bold mr-2">
+                                <div class="w-8 h-8 rounded-full bg-dark-teal flex items-center justify-center text-white text-sm font-bold mr-2 avatar-small">
                                     {{ pm.get_full_name|default:pm.username|slice:"0:2"|upper }}
                                 </div>
-                                <div class="flex-1">
-                                    <h6 class="text-sm font-medium text-gray-900">{{ pm.get_full_name|default:pm.username }}</h6>
-                                    <p class="text-xs text-gray-500">Project Manager</p>
+                                <div class="flex-1 min-w-0">
+                                    <h6 class="text-sm font-medium text-gray-900 truncate">{{ pm.get_full_name|default:pm.username }}</h6>
+                                    <p class="text-xs text-gray-500 truncate">Project Manager</p>
                                 </div>
-                                <button class="px-2 py-1 text-xs bg-dark-teal text-white rounded start-chat-btn">
+                                <button class="px-2 py-1 text-xs bg-dark-teal text-white rounded start-chat-btn whitespace-nowrap">
                                     Message
                                 </button>
                             </div>
@@ -178,14 +289,14 @@
                              data-user-id="{{ member.id }}"
                              data-name="{{ member.get_full_name|default:member.username }}">
                             <div class="flex items-center">
-                                <div class="w-8 h-8 rounded-full bg-dark-cyan flex items-center justify-center text-white text-sm font-bold mr-2">
+                                <div class="w-8 h-8 rounded-full bg-dark-cyan flex items-center justify-center text-white text-sm font-bold mr-2 avatar-small">
                                     {{ member.get_full_name|default:member.username|slice:"0:2"|upper }}
                                 </div>
-                                <div class="flex-1">
-                                    <h6 class="text-sm font-medium text-gray-900">{{ member.get_full_name|default:member.username }}</h6>
-                                    <p class="text-xs text-gray-500">Team Member</p>
+                                <div class="flex-1 min-w-0">
+                                    <h6 class="text-sm font-medium text-gray-900 truncate">{{ member.get_full_name|default:member.username }}</h6>
+                                    <p class="text-xs text-gray-500 truncate">Team Member</p>
                                 </div>
-                                <button class="px-2 py-1 text-xs bg-dark-teal text-white rounded start-chat-btn">
+                                <button class="px-2 py-1 text-xs bg-dark-teal text-white rounded start-chat-btn whitespace-nowrap">
                                     Message
                                 </button>
                             </div>
@@ -199,19 +310,23 @@
     </div>
     
     <!-- Chat Area -->
-    <div id="chatArea" class="flex-1 flex flex-col">
+    <div id="chatArea" class="flex-1 flex flex-col w-full">
         <!-- Chat Header -->
-        <div class="p-4 border-b border-gray-200 bg-white flex items-center justify-between">
+        <div class="p-4 border-b border-gray-200 bg-white flex items-center justify-between chat-header">
             <div class="flex items-center">
+                <!-- Back Button for Mobile -->
+                <button id="backToConversations" class="mr-2 md:hidden text-dark-teal">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
                 <div class="relative">
                     <div id="chatAvatar" class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold text-lg mr-3">
                         <i class="fas fa-user"></i>
                     </div>
                     <div id="chatOnlineStatus" class="online-indicator" style="display: none;"></div>
                 </div>
-                <div>
-                    <h3 id="chatPerson" class="font-semibold text-ink-black">Select a conversation</h3>
-                    <p id="chatRole" class="text-sm text-gray-600"></p>
+                <div class="min-w-0">
+                    <h3 id="chatPerson" class="font-semibold text-ink-black truncate">Select a conversation</h3>
+                    <p id="chatRole" class="text-sm text-gray-600 truncate"></p>
                 </div>
             </div>
             <div class="flex items-center space-x-2">
@@ -234,14 +349,14 @@
         </div>
         
         <!-- Message Input -->
-        <div id="messageInputContainer" class="p-4 border-t border-gray-200 bg-white" style="display: none;">
+        <div id="messageInputContainer" class="p-4 border-t border-gray-200 bg-white message-input-container" style="display: none;">
             <div class="flex items-center space-x-2">
                 <button class="p-2 text-dark-teal hover:text-dark-cyan" id="attachFileBtn">
                     <i class="fas fa-paperclip"></i>
                 </button>
                 <div class="flex-1 relative">
                     <input type="text" id="messageInput" placeholder="Type your message..." 
-                           class="w-full p-3 border border-gray-300 rounded-lg pr-12 focus:outline-none focus:ring-2 focus:ring-dark-teal" disabled>
+                           class="w-full p-3 border border-gray-300 rounded-lg pr-12 focus:outline-none focus:ring-2 focus:ring-dark-teal message-input" disabled>
                     <div class="absolute right-3 top-3 flex items-center space-x-2">
                         <button class="text-dark-teal hover:text-dark-cyan" id="sendMessageBtn">
                             <i class="fas fa-paper-plane"></i>
@@ -259,21 +374,21 @@
 
 {% block modal %}
 <!-- New Message Modal -->
-<div id="newMessageModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-    <div class="bg-white rounded-xl shadow-lg w-full max-w-md mx-4 p-6">
-        <div class="flex justify-between items-center mb-6">
+<div id="newMessageModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 p-4">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-md mx-auto modal-content">
+        <div class="flex justify-between items-center mb-6 p-6">
             <h3 class="text-xl font-semibold text-ink-black">New Message</h3>
             <button class="text-gray-500 hover:text-gray-700 close-modal">
                 <i class="fas fa-times text-xl"></i>
             </button>
         </div>
         
-        <form id="newMessageForm">
+        <form id="newMessageForm" class="px-6 pb-6">
             {% csrf_token %}
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">To</label>
-                    <select name="recipient" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-dark-teal" 
+                    <select name="recipient" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-dark-teal text-sm md:text-base" 
                             id="recipientSelect" required>
                         <option value="">Select recipient</option>
                         {% if project_managers %}
@@ -296,7 +411,7 @@
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Related Task (Optional)</label>
-                    <select name="task" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-dark-teal" id="taskSelect">
+                    <select name="task" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-dark-teal text-sm md:text-base" id="taskSelect">
                         <option value="">Select a task</option>
                         {% for task in user_tasks %}
                         <option value="{{ task.id }}">#{{ task.id }} - {{ task.title }}</option>
@@ -306,16 +421,16 @@
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Message</label>
-                    <textarea name="content" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-dark-teal" 
+                    <textarea name="content" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-dark-teal text-sm md:text-base" 
                               rows="4" placeholder="Type your message..." id="newMessageText" required></textarea>
                 </div>
             </div>
             
             <div class="mt-6 flex justify-end space-x-3">
-                <button type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 close-modal">
+                <button type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 close-modal text-sm md:text-base">
                     Cancel
                 </button>
-                <button type="submit" class="px-4 py-2 bg-dark-teal text-white rounded-lg hover:bg-dark-cyan">
+                <button type="submit" class="px-4 py-2 bg-dark-teal text-white rounded-lg hover:bg-dark-cyan text-sm md:text-base">
                     Send Message
                 </button>
             </div>
@@ -334,6 +449,12 @@
     let reconnectTimeout = null;
     let reconnectAttempts = 0;
     let lastMessageId = null;
+    let isMobile = window.innerWidth < 768;
+    
+    // Detect screen size changes
+    window.addEventListener('resize', function() {
+        isMobile = window.innerWidth < 768;
+    });
     
     // Initialize when page loads
     document.addEventListener('DOMContentLoaded', function() {
@@ -341,11 +462,57 @@
         setupEventListeners();
         updateUnreadCount();
         
+        // Mobile sidebar setup
+        setupMobileNavigation();
+        
         // Request notification permission
         if ("Notification" in window) {
             Notification.requestPermission();
         }
     });
+    
+    function setupMobileNavigation() {
+        const sidebar = document.getElementById('conversationsSidebar');
+        const toggleBtn = document.getElementById('mobileConversationsToggle');
+        const closeBtn = document.getElementById('closeSidebar');
+        const backBtn = document.getElementById('backToConversations');
+        
+        if (!isMobile) {
+            sidebar.classList.remove('conversations-sidebar');
+            sidebar.classList.add('block');
+            return;
+        }
+        
+        // Toggle sidebar
+        toggleBtn.addEventListener('click', function() {
+            sidebar.classList.add('active');
+            document.getElementById('chatArea').classList.remove('active');
+            toggleBtn.style.display = 'none';
+        });
+        
+        // Close sidebar
+        closeBtn.addEventListener('click', function() {
+            sidebar.classList.remove('active');
+            toggleBtn.style.display = 'block';
+        });
+        
+        // Back to conversations from chat
+        backBtn.addEventListener('click', function() {
+            sidebar.classList.add('active');
+            document.getElementById('chatArea').classList.remove('active');
+            toggleBtn.style.display = 'none';
+        });
+        
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            if (isMobile && sidebar.classList.contains('active') && 
+                !sidebar.contains(event.target) && 
+                event.target !== toggleBtn) {
+                sidebar.classList.remove('active');
+                toggleBtn.style.display = 'block';
+            }
+        });
+    }
     
     function initializeWebSocket() {
         const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
@@ -429,6 +596,15 @@
                 const userId = item.getAttribute('data-user-id');
                 const conversationId = item.getAttribute('data-conversation-id');
                 selectConversation(userId, conversationId, item);
+                
+                // On mobile, switch to chat view
+                if (isMobile) {
+                    const sidebar = document.getElementById('conversationsSidebar');
+                    const toggleBtn = document.getElementById('mobileConversationsToggle');
+                    sidebar.classList.remove('active');
+                    document.getElementById('chatArea').classList.add('active');
+                    toggleBtn.style.display = 'block';
+                }
             }
         });
         
@@ -440,6 +616,15 @@
                 const userId = item.getAttribute('data-user-id');
                 const userName = item.getAttribute('data-name');
                 startNewConversation(userId, userName);
+                
+                // On mobile, switch to chat view
+                if (isMobile) {
+                    const sidebar = document.getElementById('conversationsSidebar');
+                    const toggleBtn = document.getElementById('mobileConversationsToggle');
+                    sidebar.classList.remove('active');
+                    document.getElementById('chatArea').classList.add('active');
+                    toggleBtn.style.display = 'block';
+                }
             });
         });
         
@@ -450,6 +635,15 @@
                     const userId = this.getAttribute('data-user-id');
                     const userName = this.getAttribute('data-name');
                     startNewConversation(userId, userName);
+                    
+                    // On mobile, switch to chat view
+                    if (isMobile) {
+                        const sidebar = document.getElementById('conversationsSidebar');
+                        const toggleBtn = document.getElementById('mobileConversationsToggle');
+                        sidebar.classList.remove('active');
+                        document.getElementById('chatArea').classList.add('active');
+                        toggleBtn.style.display = 'block';
+                    }
                 }
             });
         });
@@ -516,6 +710,13 @@
                 showNotification('Info', 'Please select a conversation first', 'info');
             }
         });
+        
+        // Close modal on escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                document.getElementById('newMessageModal').classList.add('hidden');
+            }
+        });
     }
     
     function selectConversation(userId, conversationId, element) {
@@ -530,7 +731,7 @@
         currentConversationId = conversationId;
         
         // Show chat area and enable input
-        document.getElementById('messageInputContainer').style.display = 'block';
+        document.getElementById('messageInputContainer').style.display = 'flex';
         document.getElementById('videoCallBtn').style.display = 'block';
         document.getElementById('moreOptionsBtn').style.display = 'block';
         
@@ -559,7 +760,7 @@
         currentConversationId = `conv_{{ user.id }}_${userId}`;
         
         // Show chat area
-        document.getElementById('messageInputContainer').style.display = 'block';
+        document.getElementById('messageInputContainer').style.display = 'flex';
         document.getElementById('videoCallBtn').style.display = 'block';
         document.getElementById('moreOptionsBtn').style.display = 'block';
         document.getElementById('messageInput').disabled = false;
@@ -730,14 +931,14 @@
                 html += `
                     <div class="flex mb-4 ${isSent ? 'justify-end' : ''}">
                         ${!isSent ? `
-                            <div class="w-8 h-8 rounded-full ${msg.avatar_color || 'bg-dark-teal'} flex items-center justify-center text-white text-xs font-bold mr-2">
+                            <div class="w-8 h-8 rounded-full ${msg.avatar_color || 'bg-dark-teal'} flex items-center justify-center text-white text-xs font-bold mr-2 ${isMobile ? 'hidden sm:flex' : ''}">
                                 ${msg.initials || '??'}
                             </div>
                         ` : ''}
                         
-                        <div class="max-w-xs md:max-w-md">
+                        <div class="max-w-xs md:max-w-md lg:max-w-lg">
                             <div class="${isSent ? 'message-sent' : 'message-received'} p-3">
-                                <p>${escapeHtml(msg.content)}</p>
+                                <p class="break-words">${escapeHtml(msg.content)}</p>
                                 ${msg.task_tag ? `
                                 <div class="mt-2">
                                     <span class="text-xs px-2 py-1 ${isSent ? 'bg-white bg-opacity-20' : 'bg-gray-100'} text-dark-teal rounded">
@@ -755,7 +956,7 @@
                         </div>
                         
                         ${isSent ? `
-                            <div class="w-8 h-8 rounded-full bg-golden-orange flex items-center justify-center text-white text-xs font-bold ml-2">
+                            <div class="w-8 h-8 rounded-full bg-golden-orange flex items-center justify-center text-white text-xs font-bold ml-2 ${isMobile ? 'hidden sm:flex' : ''}">
                                 {{ user.get_full_name|default:user.username|slice:"0:2"|upper }}
                             </div>
                         ` : ''}
@@ -840,8 +1041,6 @@
         
         // Stop typing indicator
         sendTypingIndicator(false);
-        
-        // Message persistence handled by server via WebSocket; do not double-send via API when WS is connected
     }
     
     function sendMessageViaAPI(content) {
@@ -937,14 +1136,14 @@
         
         messageDiv.innerHTML = `
             ${!messageData.is_sent ? `
-                <div class="w-8 h-8 rounded-full ${messageData.avatar_color || 'bg-dark-teal'} flex items-center justify-center text-white text-xs font-bold mr-2">
+                <div class="w-8 h-8 rounded-full ${messageData.avatar_color || 'bg-dark-teal'} flex items-center justify-center text-white text-xs font-bold mr-2 ${isMobile ? 'hidden sm:flex' : ''}">
                     ${messageData.initials}
                 </div>
             ` : ''}
             
-            <div class="max-w-xs md:max-w-md">
+            <div class="max-w-xs md:max-w-md lg:max-w-lg">
                 <div class="${messageData.is_sent ? 'message-sent' : 'message-received'} p-3">
-                    <p>${escapeHtml(messageData.content)}</p>
+                    <p class="break-words">${escapeHtml(messageData.content)}</p>
                 </div>
                 <div class="flex ${messageData.is_sent ? 'justify-end' : ''} mt-1">
                     <span class="text-xs ${messageData.is_sent ? 'text-blue-100 mr-2' : 'text-gray-500'}">
@@ -955,7 +1154,7 @@
             </div>
             
             ${messageData.is_sent ? `
-                <div class="w-8 h-8 rounded-full bg-golden-orange flex items-center justify-center text-white text-xs font-bold ml-2">
+                <div class="w-8 h-8 rounded-full bg-golden-orange flex items-center justify-center text-white text-xs font-bold ml-2 ${isMobile ? 'hidden sm:flex' : ''}">
                     {{ user.get_full_name|default:user.username|slice:"0:2"|upper }}
                 </div>
             ` : ''}
@@ -1027,26 +1226,28 @@
         items.forEach(item => {
             switch(filter) {
                 case 'all':
-                    item.style.display = 'block';
+                    item.style.display = 'flex';
                     break;
                     
                 case 'unread':
                     const unread = parseInt(item.getAttribute('data-unread') || 0);
-                    item.style.display = unread > 0 ? 'block' : 'none';
+                    item.style.display = unread > 0 ? 'flex' : 'none';
                     break;
                     
                 case 'online':
                     const onlineIndicator = item.querySelector('.online-indicator');
                     const isOnline = onlineIndicator && window.getComputedStyle(onlineIndicator).display !== 'none';
-                    item.style.display = isOnline ? 'block' : 'none';
+                    item.style.display = isOnline ? 'flex' : 'none';
                     break;
             }
         });
         
         // Update active filter button
-        document.querySelectorAll('.p-4 button').forEach(btn => {
-            btn.classList.remove('bg-dark-teal', 'text-white');
-            btn.classList.add('bg-gray-100', 'text-gray-700');
+        document.querySelectorAll('.filter-buttons button').forEach(btn => {
+            if (btn.id && btn.id.startsWith('filter')) {
+                btn.classList.remove('bg-dark-teal', 'text-white');
+                btn.classList.add('bg-gray-100', 'text-gray-700');
+            }
         });
         document.getElementById(`filter${filter.charAt(0).toUpperCase() + filter.slice(1)}`).classList.remove('bg-gray-100', 'text-gray-700');
         document.getElementById(`filter${filter.charAt(0).toUpperCase() + filter.slice(1)}`).classList.add('bg-dark-teal', 'text-white');
@@ -1059,7 +1260,7 @@
             const message = item.querySelector('p.text-sm').textContent.toLowerCase();
             
             if (name.includes(query.toLowerCase()) || message.includes(query.toLowerCase())) {
-                item.style.display = 'block';
+                item.style.display = 'flex';
             } else {
                 item.style.display = 'none';
             }
@@ -1088,13 +1289,13 @@
                  data-unread="0">
                 <div class="flex items-start">
                     <div class="relative">
-                        <div class="w-12 h-12 rounded-full ${colorClass} flex items-center justify-center text-white font-bold text-lg mr-3">
+                        <div class="w-12 h-12 rounded-full ${colorClass} flex items-center justify-center text-white font-bold text-lg mr-3 avatar-large">
                             ${initials}
                         </div>
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex justify-between items-start">
-                            <h4 class="font-medium text-ink-black truncate">${userName}</h4>
+                            <h4 class="font-medium text-ink-black truncate text-sm md:text-base">${userName}</h4>
                             <span class="text-xs text-gray-500 whitespace-nowrap">Just now</span>
                         </div>
                         <p class="text-sm text-gray-600 truncate mt-1">
@@ -1125,9 +1326,10 @@
             // Update last message
             const lastMessageElement = conversationItem.querySelector('.text-sm.text-gray-600');
             if (lastMessageElement) {
-                lastMessageElement.textContent = messageData.content.length > 40 ? 
+                const truncatedMessage = messageData.content.length > 40 ? 
                     messageData.content.substring(0, 40) + '...' : 
                     messageData.content;
+                lastMessageElement.textContent = truncatedMessage;
             }
             
             // Update time
@@ -1144,7 +1346,10 @@
             if (!unreadIndicator) {
                 unreadIndicator = document.createElement('div');
                 unreadIndicator.className = 'unread-indicator';
-                conversationItem.querySelector('.flex.items-center.justify-between').appendChild(unreadIndicator);
+                const indicatorContainer = conversationItem.querySelector('.flex.items-center.justify-between');
+                if (indicatorContainer) {
+                    indicatorContainer.appendChild(unreadIndicator);
+                }
             }
             
             // Move to top
@@ -1169,13 +1374,16 @@
                             badgeElement.textContent = unreadCount;
                         } else {
                             // Create badge if it doesn't exist
-                            const envelopeIcon = document.querySelector('header .fa-envelope').closest('a, button');
+                            const envelopeIcon = document.querySelector('header .fa-envelope');
                             if (envelopeIcon) {
-                                const badge = document.createElement('span');
-                                badge.className = 'absolute -top-1 -right-1 bg-golden-orange text-white text-xs w-5 h-5 flex items-center justify-center rounded-full';
-                                badge.textContent = unreadCount;
-                                envelopeIcon.parentElement.classList.add('relative');
-                                envelopeIcon.parentElement.appendChild(badge);
+                                const parent = envelopeIcon.closest('a, button');
+                                if (parent) {
+                                    const badge = document.createElement('span');
+                                    badge.className = 'absolute -top-1 -right-1 bg-golden-orange text-white text-xs w-5 h-5 flex items-center justify-center rounded-full';
+                                    badge.textContent = unreadCount;
+                                    parent.parentElement.classList.add('relative');
+                                    parent.parentElement.appendChild(badge);
+                                }
                             }
                         }
                     } else if (badgeElement) {
@@ -1232,7 +1440,7 @@
             <div class="text-center py-8 text-gray-500">
                 <i class="fas fa-exclamation-triangle text-2xl mb-2"></i>
                 <p>${message}</p>
-                <button onclick="loadConversationMessages(${currentConversationUserId})" class="mt-2 px-4 py-2 bg-dark-teal text-white rounded hover:bg-dark-cyan">
+                <button onclick="loadConversationMessages(${currentConversationUserId})" class="mt-2 px-4 py-2 bg-dark-teal text-white rounded hover:bg-dark-cyan text-sm">
                     Try Again
                 </button>
             </div>
@@ -1284,13 +1492,13 @@
         
         // Create notification element
         const notification = document.createElement('div');
-        notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 transform transition-transform duration-300 translate-x-full ${colors[type] || colors.info}`;
+        notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 transform transition-transform duration-300 translate-x-full ${colors[type] || colors.info} max-w-xs md:max-w-md`;
         notification.innerHTML = `
             <div class="flex items-start">
                 <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'} mr-3 mt-1"></i>
-                <div>
-                    <p class="font-medium">${title}</p>
-                    <p class="text-sm mt-1">${message}</p>
+                <div class="flex-1">
+                    <p class="font-medium text-sm md:text-base">${title}</p>
+                    <p class="text-xs md:text-sm mt-1">${message}</p>
                 </div>
                 <button class="ml-4 text-gray-500 hover:text-gray-700" onclick="this.parentElement.parentElement.remove()">
                     <i class="fas fa-times"></i>
@@ -1303,13 +1511,11 @@
         // Animate in
         setTimeout(() => {
             notification.classList.remove('translate-x-full');
-            notification.classList.add('translate-x-0');
         }, 10);
         
         // Auto-remove after 3 seconds
         setTimeout(() => {
             if (notification.parentElement) {
-                notification.classList.remove('translate-x-0');
                 notification.classList.add('translate-x-full');
                 setTimeout(() => {
                     if (notification.parentElement) {
