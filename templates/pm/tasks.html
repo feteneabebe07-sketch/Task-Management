@@ -1,0 +1,1544 @@
+{% extends 'pm/base.html' %}
+
+{% block page_title %}Task Management{% endblock %}
+
+{% block content %}
+<!-- View Toggle and Filters - Responsive -->
+<div class="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-6">
+    <div class="flex flex-col space-y-4 md:space-y-0">
+        <!-- Top Row: View Toggle and Filters -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+            <div class="flex space-x-2 w-full sm:w-auto">
+                <button id="listViewBtn" class="view-active px-4 py-2 rounded-lg flex items-center justify-center bg-dark-teal text-white flex-1 sm:flex-none min-w-0">
+                    <i class="fas fa-list mr-2"></i>
+                    <span class="truncate">List View</span>
+                </button>
+                <button id="boardViewBtn" class="px-4 py-2 bg-gray-100 rounded-lg flex items-center justify-center hover:bg-gray-200 transition text-gray-700 flex-1 sm:flex-none min-w-0">
+                    <i class="fas fa-th-large mr-2"></i>
+                    <span class="truncate">Board View</span>
+                </button>
+            </div>
+            
+            <div class="flex flex-wrap gap-2 w-full sm:w-auto justify-center sm:justify-start">
+                <a href="{% url 'pm_tasks' %}" class="{% if not status_filter %}filter-active{% else %}bg-gray-100{% endif %} px-3 py-1 rounded-full text-sm transition {% if not status_filter %}bg-dark-teal text-white{% else %}hover:bg-gray-200{% endif %} whitespace-nowrap">
+                    All
+                </a>
+                <a href="{% url 'pm_tasks' %}?status=todo" class="{% if status_filter == 'todo' %}filter-active{% else %}bg-gray-100{% endif %} px-3 py-1 rounded-full text-sm transition {% if status_filter == 'todo' %}bg-dark-teal text-white{% else %}hover:bg-gray-200{% endif %} whitespace-nowrap">
+                    To Do
+                </a>
+                <a href="{% url 'pm_tasks' %}?status=in_progress" class="{% if status_filter == 'in_progress' %}filter-active{% else %}bg-gray-100{% endif %} px-3 py-1 rounded-full text-sm transition {% if status_filter == 'in_progress' %}bg-dark-teal text-white{% else %}hover:bg-gray-200{% endif %} whitespace-nowrap">
+                    In Progress
+                </a>
+                <a href="{% url 'pm_tasks' %}?status=review" class="{% if status_filter == 'review' %}filter-active{% else %}bg-gray-100{% endif %} px-3 py-1 rounded-full text-sm transition {% if status_filter == 'review' %}bg-dark-teal text-white{% else %}hover:bg-gray-200{% endif %} whitespace-nowrap">
+                    Review
+                </a>
+                <a href="{% url 'pm_tasks' %}?status=done" class="{% if status_filter == 'done' %}filter-active{% else %}bg-gray-100{% endif %} px-3 py-1 rounded-full text-sm transition {% if status_filter == 'done' %}bg-dark-teal text-white{% else %}hover:bg-gray-200{% endif %} whitespace-nowrap">
+                    Done
+                </a>
+            </div>
+        </div>
+        
+        <!-- Search and Filters Form - Stack on mobile -->
+        <div class="flex flex-col lg:flex-row space-y-3 lg:space-y-0 lg:space-x-3 w-full">
+            <form method="GET" action="{% url 'pm_tasks' %}" class="flex flex-col md:flex-row flex-wrap gap-3 w-full">
+                <div class="relative flex-1 min-w-0">
+                    <input type="text" name="search" placeholder="Search tasks..." value="{{ search_query }}" class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-dark-teal text-sm md:text-base">
+                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                </div>
+                
+                <div class="flex flex-col sm:flex-row gap-3 flex-1">
+                    <select name="project" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-dark-teal text-sm md:text-base">
+                        <option value="">All Projects</option>
+                        {% for project in managed_projects %}
+                            <option value="{{ project.id }}" {% if project_filter == project.id|stringformat:"i" %}selected{% endif %}>{{ project.name|truncatechars:20 }}</option>
+                        {% endfor %}
+                    </select>
+                    
+                    <select name="priority" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-dark-teal text-sm md:text-base">
+                        <option value="">All Priorities</option>
+                        <option value="low" {% if priority_filter == 'low' %}selected{% endif %}>Low</option>
+                        <option value="medium" {% if priority_filter == 'medium' %}selected{% endif %}>Medium</option>
+                        <option value="high" {% if priority_filter == 'high' %}selected{% endif %}>High</option>
+                        <option value="critical" {% if priority_filter == 'critical' %}selected{% endif %}>Critical</option>
+                    </select>
+                </div>
+                
+                <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                    <button type="submit" class="px-4 py-2 bg-dark-teal text-white rounded-lg hover:bg-dark-cyan flex items-center justify-center text-sm md:text-base">
+                        <i class="fas fa-filter mr-2"></i>
+                        <span>Apply</span>
+                    </button>
+                    <a href="{% url 'pm_tasks' %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex items-center justify-center text-sm md:text-base">
+                        <i class="fas fa-redo mr-2"></i>
+                        <span>Reset</span>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Task Statistics - Responsive Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 md:mb-8">
+    <div class="bg-white rounded-xl shadow-sm p-4 md:p-6 card-hover transition">
+        <div class="flex justify-between items-start">
+            <div>
+                <p class="text-gray-500 text-xs md:text-sm">Total Tasks</p>
+                <h3 class="text-xl md:text-2xl font-bold text-ink-black mt-1">{{ total_tasks_count }}</h3>
+            </div>
+            <div class="p-2 md:p-3 bg-dark-teal bg-opacity-10 rounded-lg">
+                <i class="fas fa-tasks text-dark-teal text-lg md:text-xl"></i>
+            </div>
+        </div>
+        <p class="text-xs text-gray-500 mt-3 md:mt-4">
+            <span class="text-dark-cyan font-medium">{{ active_tasks_count }} active</span>
+        </p>
+    </div>
+    
+    <div class="bg-white rounded-xl shadow-sm p-4 md:p-6 card-hover transition">
+        <div class="flex justify-between items-start">
+            <div>
+                <p class="text-gray-500 text-xs md:text-sm">Overdue</p>
+                <h3 class="text-xl md:text-2xl font-bold text-ink-black mt-1">{{ overdue_tasks_count }}</h3>
+            </div>
+            <div class="p-2 md:p-3 bg-rusty-spice bg-opacity-10 rounded-lg">
+                <i class="fas fa-exclamation-circle text-rusty-spice text-lg md:text-xl"></i>
+            </div>
+        </div>
+        <p class="text-xs text-gray-500 mt-3 md:mt-4">
+            <span class="text-rusty-spice font-medium">Need attention</span>
+        </p>
+    </div>
+    
+    <div class="bg-white rounded-xl shadow-sm p-4 md:p-6 card-hover transition">
+        <div class="flex justify-between items-start">
+            <div>
+                <p class="text-gray-500 text-xs md:text-sm">Due This Week</p>
+                <h3 class="text-xl md:text-2xl font-bold text-ink-black mt-1">{{ due_this_week_count }}</h3>
+            </div>
+            <div class="p-2 md:p-3 bg-golden-orange bg-opacity-10 rounded-lg">
+                <i class="fas fa-calendar-week text-golden-orange text-lg md:text-xl"></i>
+            </div>
+        </div>
+        <p class="text-xs text-gray-500 mt-3 md:mt-4">
+            <span class="text-dark-cyan font-medium">{{ high_priority_week_count }} high priority</span>
+        </p>
+    </div>
+    
+    <div class="bg-white rounded-xl shadow-sm p-4 md:p-6 card-hover transition">
+        <div class="flex justify-between items-start">
+            <div>
+                <p class="text-gray-500 text-xs md:text-sm">Completed</p>
+                <h3 class="text-xl md:text-2xl font-bold text-ink-black mt-1">{{ completed_tasks_count }}</h3>
+            </div>
+            <div class="p-2 md:p-3 bg-pearl-aqua bg-opacity-10 rounded-lg">
+                <i class="fas fa-check-circle text-pearl-aqua text-lg md:text-xl"></i>
+            </div>
+        </div>
+        <p class="text-xs text-gray-500 mt-3 md:mt-4">
+            <span class="text-dark-cyan font-medium">This month</span>
+        </p>
+    </div>
+</div>
+
+<!-- List View -->
+<div id="listView">
+    {% if tasks %}
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-max">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 md:px-6 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Task</th>
+                        <th class="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Project</th>
+                        <th class="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Assignee</th>
+                        <th class="px-4 py-3 md:px-6 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Due Date</th>
+                        <th class="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Priority</th>
+                        <th class="px-4 py-3 md:px-6 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Status</th>
+                        <th class="px-4 py-3 md:px-6 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for task in tasks %}
+                    <tr class="hover:bg-gray-50 transition" data-task-id="{{ task.id }}">
+                        <td class="px-4 py-4 md:px-6 md:py-4">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-8 w-8 md:h-10 md:w-10 bg-dark-teal bg-opacity-10 rounded-lg flex items-center justify-center">
+                                    {% if task.task_type == 'bug' %}
+                                    <i class="fas fa-bug text-rusty-spice text-sm md:text-base"></i>
+                                    {% elif task.task_type == 'feature' %}
+                                    <i class="fas fa-star text-dark-teal text-sm md:text-base"></i>
+                                    {% elif task.task_type == 'improvement' %}
+                                    <i class="fas fa-wrench text-golden-orange text-sm md:text-base"></i>
+                                    {% else %}
+                                    <i class="fas fa-tasks text-dark-teal text-sm md:text-base"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="ml-3 md:ml-4">
+                                    <div class="text-sm font-medium text-gray-900 truncate max-w-[150px] md:max-w-none">{{ task.title }}</div>
+                                    <div class="text-xs text-gray-500">
+                                        #TASK-{{ task.id }}
+                                        {% if task.subtasks_total and task.subtasks_total > 0 %}
+                                        <span class="hidden md:inline"> &middot; Subtasks: {{ task.subtasks_completed }}/{{ task.subtasks_total }} ({{ task.progress }}%)</span>
+                                        <span class="md:hidden"> • {{ task.progress }}%</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ task.project.name|truncatechars:20 }}</td>
+                        <td class="hidden lg:table-cell px-6 py-4 whitespace-nowrap">
+                            {% if task.assigned_to %}
+                            <div class="flex items-center">
+                                <div class="w-6 h-6 md:w-8 md:h-8 rounded-full bg-dark-teal flex items-center justify-center text-white text-xs font-bold">
+                                    {{ task.assigned_to.user.first_name|first }}{{ task.assigned_to.user.last_name|first }}
+                                </div>
+                                <div class="ml-2 text-sm font-medium hidden xl:inline">{{ task.assigned_to.user.get_full_name|truncatechars:15 }}</div>
+                            </div>
+                            {% else %}
+                            <span class="text-sm text-gray-500">Unassigned</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-4 md:px-6 md:py-4 whitespace-nowrap">
+                            <div class="flex flex-col">
+                                <div class="text-xs md:text-sm {% if task.due_date < today and task.status != 'done' %}text-rusty-spice{% else %}text-gray-500{% endif %}">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-calendar-alt mr-1 text-gray-400 text-xs"></i>
+                                        <span class="truncate">{{ task.due_date|date:"M d, Y" }}</span>
+                                    </div>
+                                </div>
+                                {% if task.due_date < today and task.status != 'done' %}
+                                <span class="text-xs text-rusty-spice md:hidden">Overdue</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 py-1 text-xs rounded-full priority-{{ task.priority }}">
+                                <span class="hidden md:inline">{{ task.get_priority_display }}</span>
+                                <span class="md:hidden">{{ task.get_priority_display|slice:":1" }}</span>
+                            </span>
+                        </td>
+                        <td class="px-4 py-4 md:px-6 md:py-4 whitespace-nowrap">
+                            <span class="px-2 py-1 text-xs rounded-full status-{{ task.status }} {% if task.status == 'todo' %}bg-golden-orange bg-opacity-10 text-golden-orange{% elif task.status == 'in_progress' %}bg-dark-cyan bg-opacity-10 text-dark-cyan{% elif task.status == 'review' %}bg-rusty-spice bg-opacity-10 text-rusty-spice{% elif task.status == 'done' %}bg-pearl-aqua bg-opacity-10 text-pearl-aqua{% endif %}">
+                                <span class="hidden md:inline">{{ task.get_status_display }}</span>
+                                <span class="md:hidden">{{ task.get_status_display|slice:":1" }}</span>
+                            </span>
+                        </td>
+                        <td class="px-4 py-4 md:px-6 md:py-4 whitespace-nowrap text-sm font-medium">
+                            <div class="flex items-center space-x-2 md:space-x-3">
+                                <!-- View Details Button -->
+                                <button class="text-dark-cyan hover:text-dark-teal view-details" data-id="{{ task.id }}" title="View Details">
+                                    <i class="fas fa-eye text-sm md:text-base"></i>
+                                </button>
+                                <!-- Edit Button -->
+                                <button class="text-dark-teal hover:text-dark-cyan edit-task" data-id="{{ task.id }}" title="Edit Task">
+                                    <i class="fas fa-edit text-sm md:text-base"></i>
+                                </button>
+                                {% if task.status == 'review' %}
+                                <button class="text-dark-teal hover:text-dark-cyan approve-task" data-id="{{ task.id }}" title="Approve Task">
+                                    <i class="fas fa-check text-sm md:text-base"></i>
+                                </button>
+                                <button class="text-rusty-spice hover:text-oxidized-iron request-changes" data-id="{{ task.id }}" title="Request Changes">
+                                    <i class="fas fa-redo text-sm md:text-base"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="px-4 py-3 md:px-6 md:py-4 bg-gray-50 border-t border-gray-200">
+            <div class="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
+                <div class="text-xs md:text-sm text-gray-500">
+                    Showing <span class="font-medium">{{ tasks.count }}</span> of <span class="font-medium">{{ total_tasks_count }}</span> tasks
+                </div>
+                <!-- Pagination would go here -->
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="p-6 md:p-12 text-center">
+        <div class="w-16 h-16 md:w-24 md:h-24 mx-auto mb-4 md:mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+            <i class="fas fa-tasks text-gray-400 text-xl md:text-3xl"></i>
+        </div>
+        <h3 class="text-lg md:text-xl font-semibold text-gray-600 mb-2">No tasks found</h3>
+        <p class="text-gray-500 text-sm md:text-base mb-6">Try adjusting your filters or create a new task</p>
+        <button id="showNewTaskModal" class="bg-dark-teal text-white px-4 py-2 md:px-6 md:py-3 rounded-lg flex items-center mx-auto hover:bg-dark-cyan text-sm md:text-base">
+            <i class="fas fa-plus mr-2"></i>
+            <span>Create New Task</span>
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Board View (Hidden by Default) - Responsive Grid -->
+<div id="boardView" class="hidden">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        <!-- To Do Column -->
+        <div class="bg-gray-50 rounded-xl p-3 md:p-4">
+            <div class="flex justify-between items-center mb-3 md:mb-4">
+                <div class="flex items-center">
+                    <div class="w-2 h-2 md:w-3 md:h-3 rounded-full bg-golden-orange mr-2"></div>
+                    <h3 class="font-semibold text-ink-black text-sm md:text-base">To Do</h3>
+                </div>
+                <span class="bg-white px-2 py-1 rounded-full text-xs font-medium">{{ todo_tasks_count }}</span>
+            </div>
+            <div class="space-y-3 md:space-y-4 h-full">
+                {% for task in todo_tasks %}
+                <div class="bg-white rounded-lg p-3 md:p-4 shadow-sm task-card task-status-todo border-l-2 md:border-l-4 border-golden-orange" data-task-id="{{ task.id }}">
+                    <div class="flex justify-between items-start mb-2">
+                        <h4 class="font-medium text-xs md:text-sm truncate flex-1 mr-2">{{ task.title|truncatechars:30 }}</h4>
+                        <span class="text-xs priority-{{ task.priority }} px-1 md:px-2 py-1 rounded-full flex-shrink-0">
+                            {{ task.get_priority_display|slice:":1" }}
+                        </span>
+                    </div>
+                    <p class="text-xs text-gray-600 mb-2 md:mb-3 line-clamp-2">{{ task.description|truncatechars:80|default:"No description" }}</p>
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center">
+                            {% if task.assigned_to %}
+                            <div class="w-5 h-5 md:w-6 md:h-6 rounded-full bg-dark-teal flex items-center justify-center text-white text-xs flex-shrink-0">
+                                {{ task.assigned_to.user.first_name|first }}{{ task.assigned_to.user.last_name|first }}
+                            </div>
+                            <span class="text-xs text-gray-500 ml-1 truncate hidden md:inline">{{ task.assigned_to.user.first_name }}</span>
+                            {% else %}
+                            <span class="text-xs text-gray-500">Unassigned</span>
+                            {% endif %}
+                        </div>
+                        <span class="text-xs {% if task.due_date < today %}text-rusty-spice{% else %}text-gray-500{% endif %} whitespace-nowrap">
+                            {{ task.due_date|date:"M d" }}
+                        </span>
+                    </div>
+                    <div class="mt-2 md:mt-3 flex justify-end space-x-2">
+                        <button class="text-xs text-dark-cyan hover:text-dark-teal view-details" data-id="{{ task.id }}" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="text-xs text-dark-teal hover:text-dark-cyan edit-task" data-id="{{ task.id }}" title="Edit Task">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-6 md:py-8 text-gray-400">
+                    <i class="fas fa-clipboard-list text-lg md:text-2xl mb-2"></i>
+                    <p class="text-xs md:text-sm">No tasks</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- In Progress Column -->
+        <div class="bg-gray-50 rounded-xl p-3 md:p-4">
+            <div class="flex justify-between items-center mb-3 md:mb-4">
+                <div class="flex items-center">
+                    <div class="w-2 h-2 md:w-3 md:h-3 rounded-full bg-dark-cyan mr-2"></div>
+                    <h3 class="font-semibold text-ink-black text-sm md:text-base">In Progress</h3>
+                </div>
+                <span class="bg-white px-2 py-1 rounded-full text-xs font-medium">{{ in_progress_tasks_count }}</span>
+            </div>
+            <div class="space-y-3 md:space-y-4 h-full">
+                {% for task in in_progress_tasks %}
+                <div class="bg-white rounded-lg p-3 md:p-4 shadow-sm task-card task-status-progress border-l-2 md:border-l-4 border-dark-cyan" data-task-id="{{ task.id }}">
+                    <div class="flex justify-between items-start mb-2">
+                        <h4 class="font-medium text-xs md:text-sm truncate flex-1 mr-2">{{ task.title|truncatechars:30 }}</h4>
+                        <span class="text-xs priority-{{ task.priority }} px-1 md:px-2 py-1 rounded-full flex-shrink-0">
+                            {{ task.get_priority_display|slice:":1" }}
+                        </span>
+                    </div>
+                    <p class="text-xs text-gray-600 mb-2 md:mb-3 line-clamp-2">{{ task.description|truncatechars:80|default:"No description" }}</p>
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center">
+                            {% if task.assigned_to %}
+                            <div class="w-5 h-5 md:w-6 md:h-6 rounded-full bg-dark-teal flex items-center justify-center text-white text-xs flex-shrink-0">
+                                {{ task.assigned_to.user.first_name|first }}{{ task.assigned_to.user.last_name|first }}
+                            </div>
+                            <span class="text-xs text-gray-500 ml-1 truncate hidden md:inline">{{ task.assigned_to.user.first_name }}</span>
+                            {% endif %}
+                        </div>
+                        <span class="text-xs {% if task.due_date < today %}text-rusty-spice{% else %}text-gray-500{% endif %} whitespace-nowrap">
+                            {{ task.due_date|date:"M d" }}
+                        </span>
+                    </div>
+                    {% if task.progress > 0 %}
+                    <div class="mt-2 md:mt-3">
+                        <div class="flex justify-between text-xs text-gray-500 mb-1">
+                            <span>Progress</span>
+                            <span>{{ task.progress }}%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-1.5 md:h-2">
+                            <div class="bg-dark-cyan h-1.5 md:h-2 rounded-full" style="width: {{ task.progress }}%"></div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    <div class="mt-2 md:mt-3 flex justify-end space-x-2">
+                        <button class="text-xs text-dark-cyan hover:text-dark-teal view-details" data-id="{{ task.id }}" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="text-xs text-dark-teal hover:text-dark-cyan edit-task" data-id="{{ task.id }}" title="Edit Task">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-6 md:py-8 text-gray-400">
+                    <i class="fas fa-spinner text-lg md:text-2xl mb-2"></i>
+                    <p class="text-xs md:text-sm">No tasks</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- In Review Column -->
+        <div class="bg-gray-50 rounded-xl p-3 md:p-4">
+            <div class="flex justify-between items-center mb-3 md:mb-4">
+                <div class="flex items-center">
+                    <div class="w-2 h-2 md:w-3 md:h-3 rounded-full bg-rusty-spice mr-2"></div>
+                    <h3 class="font-semibold text-ink-black text-sm md:text-base">In Review</h3>
+                </div>
+                <span class="bg-white px-2 py-1 rounded-full text-xs font-medium">{{ review_tasks_count }}</span>
+            </div>
+            <div class="space-y-3 md:space-y-4 h-full">
+                {% for task in review_tasks %}
+                <div class="bg-white rounded-lg p-3 md:p-4 shadow-sm task-card task-status-review border-l-2 md:border-l-4 border-rusty-spice" data-task-id="{{ task.id }}">
+                    <div class="flex justify-between items-start mb-2">
+                        <h4 class="font-medium text-xs md:text-sm truncate flex-1 mr-2">{{ task.title|truncatechars:30 }}</h4>
+                        <span class="text-xs priority-{{ task.priority }} px-1 md:px-2 py-1 rounded-full flex-shrink-0">
+                            {{ task.get_priority_display|slice:":1" }}
+                        </span>
+                    </div>
+                    <p class="text-xs text-gray-600 mb-2 md:mb-3 line-clamp-2">{{ task.description|truncatechars:80|default:"No description" }}</p>
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center">
+                            {% if task.assigned_to %}
+                            <div class="w-5 h-5 md:w-6 md:h-6 rounded-full bg-golden-orange flex items-center justify-center text-white text-xs flex-shrink-0">
+                                {{ task.assigned_to.user.first_name|first }}{{ task.assigned_to.user.last_name|first }}
+                            </div>
+                            <span class="text-xs text-gray-500 ml-1 truncate hidden md:inline">{{ task.assigned_to.user.first_name }}</span>
+                            {% endif %}
+                        </div>
+                        <span class="text-xs {% if task.due_date < today %}text-rusty-spice{% else %}text-gray-500{% endif %} whitespace-nowrap">
+                            {{ task.due_date|date:"M d" }}
+                        </span>
+                    </div>
+                    <div class="mt-2 md:mt-3 flex space-x-1 md:space-x-2">
+                        <button class="text-xs text-dark-cyan hover:text-dark-teal view-details" data-id="{{ task.id }}" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="flex-1 px-1 md:px-2 py-1 bg-dark-teal text-white text-xs rounded hover:bg-dark-cyan approve-task" data-id="{{ task.id }}">
+                            <i class="fas fa-check mr-0 md:mr-1"></i>
+                            <span class="hidden md:inline">Approve</span>
+                        </button>
+                        <button class="flex-1 px-1 md:px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded hover:bg-gray-300 request-changes" data-id="{{ task.id }}">
+                            <i class="fas fa-redo mr-0 md:mr-1"></i>
+                            <span class="hidden md:inline">Changes</span>
+                        </button>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-6 md:py-8 text-gray-400">
+                    <i class="fas fa-eye text-lg md:text-2xl mb-2"></i>
+                    <p class="text-xs md:text-sm">No tasks</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Done Column -->
+        <div class="bg-gray-50 rounded-xl p-3 md:p-4">
+            <div class="flex justify-between items-center mb-3 md:mb-4">
+                <div class="flex items-center">
+                    <div class="w-2 h-2 md:w-3 md:h-3 rounded-full bg-pearl-aqua mr-2"></div>
+                    <h3 class="font-semibold text-ink-black text-sm md:text-base">Done</h3>
+                </div>
+                <span class="bg-white px-2 py-1 rounded-full text-xs font-medium">{{ done_tasks_count }}</span>
+            </div>
+            <div class="space-y-3 md:space-y-4 h-full">
+                {% for task in done_tasks %}
+                <div class="bg-white rounded-lg p-3 md:p-4 shadow-sm task-card task-status-done border-l-2 md:border-l-4 border-pearl-aqua" data-task-id="{{ task.id }}">
+                    <div class="flex justify-between items-start mb-2">
+                        <h4 class="font-medium text-xs md:text-sm truncate flex-1 mr-2">{{ task.title|truncatechars:30 }}</h4>
+                        <span class="text-xs priority-{{ task.priority }} px-1 md:px-2 py-1 rounded-full flex-shrink-0">
+                            {{ task.get_priority_display|slice:":1" }}
+                        </span>
+                    </div>
+                    <p class="text-xs text-gray-600 mb-2 md:mb-3 line-clamp-2">{{ task.description|truncatechars:80|default:"No description" }}</p>
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center">
+                            {% if task.assigned_to %}
+                            <div class="w-5 h-5 md:w-6 md:h-6 rounded-full bg-rusty-spice flex items-center justify-center text-white text-xs flex-shrink-0">
+                                {{ task.assigned_to.user.first_name|first }}{{ task.assigned_to.user.last_name|first }}
+                            </div>
+                            <span class="text-xs text-gray-500 ml-1 truncate hidden md:inline">{{ task.assigned_to.user.first_name }}</span>
+                            {% endif %}
+                        </div>
+                        <span class="text-xs text-gray-500 whitespace-nowrap">
+                            {% if task.completed_at %}
+                            {{ task.completed_at|date:"M d" }}
+                            {% else %}
+                            Completed
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="mt-2 md:mt-3 flex justify-between text-xs text-gray-500">
+                        <span>Actual: {{ task.actual_hours|default:"0" }}h</span>
+                        <span>Est: {{ task.estimated_hours|default:"0" }}h</span>
+                    </div>
+                    <div class="mt-2 md:mt-3 flex justify-end space-x-2">
+                        <button class="text-xs text-dark-cyan hover:text-dark-teal view-details" data-id="{{ task.id }}" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="text-xs text-dark-teal hover:text-dark-cyan edit-task" data-id="{{ task.id }}" title="Edit Task">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-6 md:py-8 text-gray-400">
+                    <i class="fas fa-check-circle text-lg md:text-2xl mb-2"></i>
+                    <p class="text-xs md:text-sm">No tasks</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Task Modal - Responsive -->
+<div id="editTaskModal" class="modal">
+    <div class="modal-content w-11/12 md:w-3/4 lg:w-1/2 max-w-4xl mx-auto">
+        <div class="p-4 md:p-6 border-b border-gray-200">
+            <h3 id="editTaskTitle" class="text-lg md:text-xl font-bold text-ink-black">Edit Task</h3>
+        </div>
+        <div class="p-4 md:p-6 max-h-[70vh] overflow-y-auto">
+            <form id="editTaskForm">
+                <input type="hidden" id="editTaskId">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-3 md:mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Task Title *</label>
+                        <input type="text" id="editTaskTitleInput" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal text-sm md:text-base" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Project *</label>
+                        <select id="editTaskProject" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal text-sm md:text-base" required>
+                            <option value="">Select Project</option>
+                            {% for project in managed_projects %}
+                            <option value="{{ project.id }}">{{ project.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="mb-3 md:mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea id="editTaskDescription" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal text-sm md:text-base"></textarea>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-3 md:mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Assigned To</label>
+                        <select id="editTaskAssignee" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal text-sm md:text-base">
+                            <option value="">Unassigned</option>
+                            {% for member in project_members %}
+                            <option value="{{ member.employee.id }}">{{ member.employee.user.get_full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Task Type</label>
+                        <select id="editTaskType" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal text-sm md:text-base">
+                            <option value="feature">Feature</option>
+                            <option value="bug">Bug</option>
+                            <option value="improvement">Improvement</option>
+                            <option value="research">Research</option>
+                            <option value="documentation">Documentation</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-3 md:mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Priority *</label>
+                        <select id="editTaskPriority" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal text-sm md:text-base" required>
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Due Date *</label>
+                        <input type="date" id="editTaskDueDate" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal text-sm md:text-base" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Status *</label>
+                        <select id="editTaskStatus" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal text-sm md:text-base" required>
+                            <option value="todo">To Do</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="review">In Review</option>
+                            <option value="done">Done</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-3 md:mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Estimated Hours</label>
+                        <input type="number" id="editTaskEstimatedHours" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal text-sm md:text-base" min="0" max="200" step="0.5">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Actual Hours</label>
+                        <input type="number" id="editTaskActualHours" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal text-sm md:text-base" min="0" max="200" step="0.5">
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Progress (%)</label>
+                    <input type="range" id="editTaskProgress" min="0" max="100" step="5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                    <div class="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>0%</span>
+                        <span id="editTaskProgressValue">50%</span>
+                        <span>100%</span>
+                    </div>
+                </div>
+                
+                <div class="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-4">
+                    <button type="button" id="cancelEditTaskBtn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 w-full sm:w-auto text-sm md:text-base">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-dark-teal text-white rounded-md hover:bg-dark-cyan w-full sm:w-auto text-sm md:text-base">Update Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Task Detail Modal (New) -->
+<div id="taskDetailModal" class="modal">
+    <div class="modal-content w-11/12 md:w-3/4 lg:w-2/3 max-w-6xl mx-auto">
+        <div class="p-4 md:p-6 border-b border-gray-200 flex justify-between items-center">
+            <h3 id="detailTaskTitle" class="text-lg md:text-xl font-bold text-ink-black">Task Details</h3>
+            <button id="closeDetailModal" class="text-gray-500 hover:text-gray-700">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <div class="p-4 md:p-6 max-h-[70vh] overflow-y-auto">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Left Column: Basic Info -->
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- Task Header -->
+                    <div class="bg-gray-50 rounded-xl p-4 md:p-6">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h4 id="detailTaskName" class="text-xl md:text-2xl font-bold text-ink-black mb-2">Loading...</h4>
+                                <div class="flex flex-wrap gap-2">
+                                    <span id="detailTaskId" class="px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-xs font-medium">#TASK-</span>
+                                    <span id="detailTaskType" class="px-3 py-1 bg-dark-teal bg-opacity-20 text-dark-teal rounded-full text-xs font-medium">Type</span>
+                                    <span id="detailTaskPriority" class="px-3 py-1 rounded-full text-xs font-medium">Priority</span>
+                                    <span id="detailTaskStatus" class="px-3 py-1 rounded-full text-xs font-medium">Status</span>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm text-gray-500">Created</p>
+                                <p id="detailTaskCreated" class="text-sm font-medium">--</p>
+                            </div>
+                        </div>
+                        
+                        <div id="detailTaskDescription" class="text-gray-700 mb-4">
+                            <p class="text-sm md:text-base">Loading description...</p>
+                        </div>
+                        
+                        <!-- Progress Section -->
+                        <div class="mb-6">
+                            <div class="flex justify-between text-sm mb-2">
+                                <span class="text-gray-600">Progress</span>
+                                <span id="detailTaskProgressText" class="font-medium">0%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-3">
+                                <div id="detailTaskProgressBar" class="bg-dark-cyan h-3 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Quick Stats -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="text-center p-3 bg-white rounded-lg shadow-sm">
+                                <p class="text-xs text-gray-500">Estimated Hours</p>
+                                <p id="detailTaskEstimatedHours" class="text-lg font-bold text-dark-teal">0</p>
+                            </div>
+                            <div class="text-center p-3 bg-white rounded-lg shadow-sm">
+                                <p class="text-xs text-gray-500">Actual Hours</p>
+                                <p id="detailTaskActualHours" class="text-lg font-bold text-dark-cyan">0</p>
+                            </div>
+                            <div class="text-center p-3 bg-white rounded-lg shadow-sm">
+                                <p class="text-xs text-gray-500">Due Date</p>
+                                <p id="detailTaskDueDate" class="text-lg font-bold text-rusty-spice">--</p>
+                            </div>
+                            <div class="text-center p-3 bg-white rounded-lg shadow-sm">
+                                <p class="text-xs text-gray-500">Days Left</p>
+                                <p id="detailTaskDaysLeft" class="text-lg font-bold text-golden-orange">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Assigned To & Project -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Assignee -->
+                        <div class="bg-white rounded-xl shadow-sm p-4 md:p-6">
+                            <h4 class="text-lg font-semibold text-ink-black mb-4">Assigned To</h4>
+                            <div id="detailTaskAssignee" class="flex items-center">
+                                <div class="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold text-xl">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <div class="ml-4">
+                                    <p class="font-medium text-ink-black">Unassigned</p>
+                                    <p class="text-sm text-gray-500">No team member assigned</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Project -->
+                        <div class="bg-white rounded-xl shadow-sm p-4 md:p-6">
+                            <h4 class="text-lg font-semibold text-ink-black mb-4">Project</h4>
+                            <div id="detailTaskProject" class="flex items-center">
+                                <div class="w-12 h-12 rounded-full bg-dark-teal bg-opacity-20 flex items-center justify-center">
+                                    <i class="fas fa-project-diagram text-dark-teal text-xl"></i>
+                                </div>
+                                <div class="ml-4">
+                                    <p id="detailProjectName" class="font-medium text-ink-black">Loading...</p>
+                                    <p id="detailProjectManager" class="text-sm text-gray-500">Project Manager: --</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Time Tracking Details -->
+                    <div class="bg-white rounded-xl shadow-sm p-4 md:p-6">
+                        <h4 class="text-lg font-semibold text-ink-black mb-4">Time Tracking</h4>
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span class="text-gray-600">Hours Breakdown</span>
+                                    <span id="detailTaskHoursRemaining" class="font-medium">0h remaining</span>
+                                </div>
+                                <div class="flex h-4 rounded-full overflow-hidden">
+                                    <div id="detailTaskHoursLogged" class="bg-dark-cyan" style="width: 0%"></div>
+                                    <div id="detailTaskHoursRemainingBar" class="bg-gray-200" style="width: 100%"></div>
+                                </div>
+                                <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                    <span>Logged: <span id="detailTaskHoursLoggedText">0h</span></span>
+                                    <span>Remaining: <span id="detailTaskHoursRemainingText">0h</span></span>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-sm text-gray-600 mb-2">Start Date</p>
+                                    <p id="detailTaskStartDate" class="font-medium">--</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600 mb-2">Completed Date</p>
+                                    <p id="detailTaskCompletedDate" class="font-medium">--</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Right Column: Actions & Metadata -->
+                <div class="space-y-6">
+                    <!-- Quick Actions -->
+                    <div class="bg-white rounded-xl shadow-sm p-4 md:p-6">
+                        <h4 class="text-lg font-semibold text-ink-black mb-4">Quick Actions</h4>
+                        <div class="space-y-3">
+                            <button id="detailEditBtn" class="w-full flex items-center justify-center px-4 py-3 bg-dark-teal text-white rounded-lg hover:bg-dark-cyan transition">
+                                <i class="fas fa-edit mr-2"></i>
+                                Edit Task
+                            </button>
+                            <button id="detailApproveBtn" class="w-full flex items-center justify-center px-4 py-3 bg-pearl-aqua text-ink-black rounded-lg hover:bg-opacity-80 transition hidden">
+                                <i class="fas fa-check mr-2"></i>
+                                Approve Task
+                            </button>
+                            <button id="detailRequestChangesBtn" class="w-full flex items-center justify-center px-4 py-3 bg-golden-orange text-white rounded-lg hover:bg-opacity-80 transition hidden">
+                                <i class="fas fa-redo mr-2"></i>
+                                Request Changes
+                            </button>
+                            <button id="detailMessageBtn" class="w-full flex items-center justify-center px-4 py-3 border border-dark-teal text-dark-teal rounded-lg hover:bg-dark-teal hover:text-white transition">
+                                <i class="fas fa-comment mr-2"></i>
+                                Message Assignee
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Task Metadata -->
+                    <div class="bg-white rounded-xl shadow-sm p-4 md:p-6">
+                        <h4 class="text-lg font-semibold text-ink-black mb-4">Task Information</h4>
+                        <div class="space-y-3">
+                            <div>
+                                <p class="text-sm text-gray-600">Task ID</p>
+                                <p id="detailTaskFullId" class="font-medium text-ink-black">#TASK-</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Created By</p>
+                                <p id="detailTaskCreatedBy" class="font-medium text-ink-black">--</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Last Updated</p>
+                                <p id="detailTaskUpdated" class="font-medium text-ink-black">--</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Sprint</p>
+                                <p id="detailTaskSprint" class="font-medium text-ink-black">Not assigned to sprint</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Status Timeline -->
+                    <div class="bg-white rounded-xl shadow-sm p-4 md:p-6">
+                        <h4 class="text-lg font-semibold text-ink-black mb-4">Status Timeline</h4>
+                        <div class="space-y-3">
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 rounded-full bg-golden-orange mr-3"></div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium">To Do</p>
+                                    <p id="detailTimelineTodo" class="text-xs text-gray-500">--</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 rounded-full bg-dark-cyan mr-3"></div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium">In Progress</p>
+                                    <p id="detailTimelineProgress" class="text-xs text-gray-500">--</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 rounded-full bg-rusty-spice mr-3"></div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium">In Review</p>
+                                    <p id="detailTimelineReview" class="text-xs text-gray-500">--</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 rounded-full bg-pearl-aqua mr-3"></div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium">Done</p>
+                                    <p id="detailTimelineDone" class="text-xs text-gray-500">--</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+// API URL templates
+const approveTaskApiUrl = "{% url 'approve_task_api' 0 %}";
+const getTaskApiUrl = "{% url 'get_task_details_api' 0 %}";
+const updateTaskApiUrl = "{% url 'update_task_api' 0 %}";
+const requestChangesApiUrl = "{% url 'request_task_changes_api' 0 %}";
+
+// View toggle functionality
+const listViewBtn = document.getElementById('listViewBtn');
+const boardViewBtn = document.getElementById('boardViewBtn');
+const listView = document.getElementById('listView');
+const boardView = document.getElementById('boardView');
+
+if (listViewBtn && boardViewBtn) {
+    listViewBtn.addEventListener('click', function() {
+        listView.classList.remove('hidden');
+        boardView.classList.add('hidden');
+        listViewBtn.classList.remove('bg-gray-100', 'text-gray-700');
+        listViewBtn.classList.add('bg-dark-teal', 'text-white');
+        boardViewBtn.classList.remove('bg-dark-teal', 'text-white');
+        boardViewBtn.classList.add('bg-gray-100', 'text-gray-700');
+    });
+
+    boardViewBtn.addEventListener('click', function() {
+        listView.classList.add('hidden');
+        boardView.classList.remove('hidden');
+        boardViewBtn.classList.remove('bg-gray-100', 'text-gray-700');
+        boardViewBtn.classList.add('bg-dark-teal', 'text-white');
+        listViewBtn.classList.remove('bg-dark-teal', 'text-white');
+        listViewBtn.classList.add('bg-gray-100', 'text-gray-700');
+    });
+}
+
+// Edit task functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // View Details buttons
+    document.querySelectorAll('.view-details').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const taskId = this.getAttribute('data-id');
+            openTaskDetailModal(taskId);
+        });
+    });
+    
+    // Edit task buttons in list view
+    document.querySelectorAll('.edit-task').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            const taskId = this.getAttribute('data-id');
+            loadTaskForEditing(taskId);
+        });
+    });
+    
+    // Edit task buttons in board view
+    document.querySelectorAll('.task-card .edit-task').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const taskId = this.getAttribute('data-id');
+            loadTaskForEditing(taskId);
+        });
+    });
+    
+    // Approve task buttons
+    document.querySelectorAll('.approve-task').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const taskId = this.getAttribute('data-id');
+            
+            // Set confirmation modal content
+            document.getElementById('confirmationTitle').textContent = 'Approve Task';
+            document.getElementById('confirmationMessage').textContent = `Are you sure you want to approve this task?`;
+            
+            // Set confirm action
+            document.getElementById('confirmActionBtn').onclick = function() {
+                approveTask(taskId);
+                closeModal('confirmationModal');
+            };
+            
+            openModal('confirmationModal');
+        });
+    });
+    
+    // Request changes buttons
+    document.querySelectorAll('.request-changes').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const taskId = this.getAttribute('data-id');
+            document.getElementById('changeTaskId').value = taskId;
+            
+            // Fetch task details for modal
+            fetch(getTaskApiUrl.replace('0', taskId))
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('changeTaskTitle').textContent = data.task_title;
+                        document.getElementById('changeTaskAssignee').textContent = data.assignee || 'Unassigned';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading task details:', error);
+                    showToast('Error', 'Failed to load task details', 'error');
+                });
+            
+            openModal('requestChangesModal');
+        });
+    });
+    
+    // Progress slider
+    const progressSlider = document.getElementById('editTaskProgress');
+    const progressValue = document.getElementById('editTaskProgressValue');
+    
+    if (progressSlider && progressValue) {
+        progressSlider.addEventListener('input', function() {
+            progressValue.textContent = this.value + '%';
+        });
+    }
+    
+    // Edit task form submission
+    const editTaskForm = document.getElementById('editTaskForm');
+    if (editTaskForm) {
+        editTaskForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            updateTask();
+        });
+    }
+    
+    // Cancel edit task button
+    const cancelEditTaskBtn = document.getElementById('cancelEditTaskBtn');
+    if (cancelEditTaskBtn) {
+        cancelEditTaskBtn.addEventListener('click', function() {
+            closeModal('editTaskModal');
+        });
+    }
+    
+    // Show new task modal button
+    const showNewTaskModalBtn = document.getElementById('showNewTaskModal');
+    if (showNewTaskModalBtn) {
+        showNewTaskModalBtn.addEventListener('click', function() {
+            openModal('newTaskModal');
+        });
+    }
+    
+    // Request Changes form submission
+    const requestChangesForm = document.getElementById('requestChangesForm');
+    if (requestChangesForm) {
+        requestChangesForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            requestChanges();
+        });
+    }
+    
+    // Task Detail Modal Close Button
+    const closeDetailModalBtn = document.getElementById('closeDetailModal');
+    if (closeDetailModalBtn) {
+        closeDetailModalBtn.addEventListener('click', function() {
+            closeModal('taskDetailModal');
+        });
+    }
+    
+    // Task Detail Modal Action Buttons
+    const detailEditBtn = document.getElementById('detailEditBtn');
+    if (detailEditBtn) {
+        detailEditBtn.addEventListener('click', function() {
+            const taskId = this.getAttribute('data-task-id');
+            if (taskId) {
+                closeModal('taskDetailModal');
+                setTimeout(() => {
+                    loadTaskForEditing(taskId);
+                }, 300);
+            }
+        });
+    }
+    
+    const detailApproveBtn = document.getElementById('detailApproveBtn');
+    if (detailApproveBtn) {
+        detailApproveBtn.addEventListener('click', function() {
+            const taskId = this.getAttribute('data-task-id');
+            if (taskId) {
+                closeModal('taskDetailModal');
+                setTimeout(() => {
+                    approveTask(taskId);
+                }, 300);
+            }
+        });
+    }
+    
+    const detailRequestChangesBtn = document.getElementById('detailRequestChangesBtn');
+    if (detailRequestChangesBtn) {
+        detailRequestChangesBtn.addEventListener('click', function() {
+            const taskId = this.getAttribute('data-task-id');
+            if (taskId) {
+                closeModal('taskDetailModal');
+                setTimeout(() => {
+                    document.getElementById('changeTaskId').value = taskId;
+                    openModal('requestChangesModal');
+                }, 300);
+            }
+        });
+    }
+    
+    const detailMessageBtn = document.getElementById('detailMessageBtn');
+    if (detailMessageBtn) {
+        detailMessageBtn.addEventListener('click', function() {
+            const assigneeId = this.getAttribute('data-assignee-id');
+            if (assigneeId) {
+                closeModal('taskDetailModal');
+                // Redirect to messages with this user
+                window.location.href = "{% url 'pm_messages' %}?user_id=" + assigneeId;
+            } else {
+                showToast('Info', 'No assignee to message', 'info');
+            }
+        });
+    }
+});
+
+// Open Task Detail Modal
+function openTaskDetailModal(taskId) {
+    showToast('Loading', 'Fetching task details...', 'info');
+    
+    fetch(getTaskApiUrl.replace('0', taskId))
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                populateTaskDetailModal(data);
+                openModal('taskDetailModal');
+                showToast('Success', 'Task details loaded', 'success');
+            } else {
+                showToast('Error', data.error || 'Failed to load task details', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error', 'Error loading task data: ' + error.message, 'error');
+        });
+}
+
+// Populate Task Detail Modal
+function populateTaskDetailModal(data) {
+    // Helper setters that safely handle missing elements
+    const setText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    };
+    const setHTML = (id, html) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = html;
+    };
+    const setClass = (id, className) => {
+        const el = document.getElementById(id);
+        if (el) el.className = className;
+    };
+    const setStyleWidth = (id, width) => {
+        const el = document.getElementById(id);
+        if (el && el.style) el.style.width = width;
+    };
+
+    // Basic Information
+    setText('detailTaskTitle', `Task Details: ${data.task_title}`);
+    setText('detailTaskName', data.task_title || '');
+    setText('detailTaskId', `#TASK-${data.task_id}`);
+    setText('detailTaskFullId', `#TASK-${data.task_id}`);
+    setHTML('detailTaskDescription', `<p class="text-sm md:text-base">${data.description || 'No description provided'}</p>`);
+
+    // Task Type
+    setText('detailTaskType', data.task_type || 'General');
+    if (data.task_type === 'bug') {
+        setClass('detailTaskType', 'px-3 py-1 bg-rusty-spice bg-opacity-20 text-rusty-spice rounded-full text-xs font-medium');
+    } else if (data.task_type === 'feature') {
+        setClass('detailTaskType', 'px-3 py-1 bg-dark-teal bg-opacity-20 text-dark-teal rounded-full text-xs font-medium');
+    } else if (data.task_type === 'improvement') {
+        setClass('detailTaskType', 'px-3 py-1 bg-golden-orange bg-opacity-20 text-golden-orange rounded-full text-xs font-medium');
+    }
+
+    // Priority
+    setText('detailTaskPriority', data.priority_display || 'Medium');
+    if (data.priority === 'high' || data.priority === 'critical') {
+        setClass('detailTaskPriority', 'px-3 py-1 bg-rusty-spice text-white rounded-full text-xs font-medium');
+    } else if (data.priority === 'medium') {
+        setClass('detailTaskPriority', 'px-3 py-1 bg-golden-orange text-white rounded-full text-xs font-medium');
+    } else {
+        setClass('detailTaskPriority', 'px-3 py-1 bg-dark-cyan text-white rounded-full text-xs font-medium');
+    }
+
+    // Status
+    setText('detailTaskStatus', data.status_display || 'To Do');
+    if (data.status === 'todo') {
+        setClass('detailTaskStatus', 'px-3 py-1 bg-golden-orange text-white rounded-full text-xs font-medium');
+    } else if (data.status === 'in_progress') {
+        setClass('detailTaskStatus', 'px-3 py-1 bg-dark-cyan text-white rounded-full text-xs font-medium');
+    } else if (data.status === 'review') {
+        setClass('detailTaskStatus', 'px-3 py-1 bg-rusty-spice text-white rounded-full text-xs font-medium');
+    } else if (data.status === 'done') {
+        setClass('detailTaskStatus', 'px-3 py-1 bg-pearl-aqua text-ink-black rounded-full text-xs font-medium');
+    }
+
+    // Dates
+    setText('detailTaskCreated', data.created_at || '--');
+    setText('detailTaskUpdated', data.updated_at || '--');
+    setText('detailTaskDueDate', data.due_date || 'No deadline');
+    setText('detailTaskCompletedDate', data.completed_at || 'Not completed');
+    setText('detailTaskStartDate', data.created_at ? data.created_at.split(' ')[0] : '--');
+
+    // Calculate days left
+    if (data.due_date) {
+        try {
+            const dueDate = new Date(data.due_date);
+            const today = new Date();
+            const timeDiff = dueDate.getTime() - today.getTime();
+            const daysLeft = Math.ceil(timeDiff / (1000 * 3600 * 24));
+            setText('detailTaskDaysLeft', daysLeft >= 0 ? `${daysLeft} days` : `${Math.abs(daysLeft)} days overdue`);
+            setClass('detailTaskDaysLeft', daysLeft >= 0 ? 'text-lg font-bold text-dark-cyan' : 'text-lg font-bold text-rusty-spice');
+        } catch (e) {
+            setText('detailTaskDaysLeft', 'No deadline');
+        }
+    } else {
+        setText('detailTaskDaysLeft', 'No deadline');
+    }
+
+    // Progress
+    const progress = data.progress || 0;
+    setText('detailTaskProgressText', `${progress}%`);
+    setStyleIfExists = (id, fn) => { const el = document.getElementById(id); if (el) fn(el); };
+    setStyleIfExists('detailTaskProgressBar', el => el.style.width = `${progress}%`);
+
+    // Hours
+    const estimatedHours = data.estimated_hours || 0;
+    const actualHours = data.actual_hours || 0;
+    const remainingHours = Math.max(0, estimatedHours - actualHours);
+    const loggedPercentage = estimatedHours > 0 ? Math.min(100, (actualHours / estimatedHours) * 100) : 0;
+
+    setText('detailTaskEstimatedHours', estimatedHours);
+    setText('detailTaskActualHours', actualHours);
+    setText('detailTaskHoursRemaining', `${remainingHours}h remaining`);
+    setText('detailTaskHoursRemainingText', `${remainingHours}h`);
+    setText('detailTaskHoursLoggedText', `${actualHours}h`);
+    setStyleIfExists('detailTaskHoursLogged', el => el.style.width = `${loggedPercentage}%`);
+    setStyleIfExists('detailTaskHoursRemainingBar', el => el.style.width = `${100 - loggedPercentage}%`);
+
+    // Assignee
+    const assigneeElement = document.getElementById('detailTaskAssignee');
+    if (assigneeElement) {
+        if (data.assignee) {
+            assigneeElement.innerHTML = `
+            <div class="w-12 h-12 rounded-full bg-dark-teal flex items-center justify-center text-white font-bold text-xl">
+                ${data.assignee.split(' ').map(n => n[0]).join('').toUpperCase()}
+            </div>
+            <div class="ml-4">
+                <p class="font-medium text-ink-black">${data.assignee}</p>
+                <p class="text-sm text-gray-500">Assigned Team Member</p>
+            </div>
+        `;
+            const msgBtn = document.getElementById('detailMessageBtn');
+            if (msgBtn) msgBtn.setAttribute('data-assignee-id', data.assignee_id);
+        } else {
+            assigneeElement.innerHTML = `
+            <div class="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold text-xl">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="ml-4">
+                <p class="font-medium text-ink-black">Unassigned</p>
+                <p class="text-sm text-gray-500">No team member assigned</p>
+            </div>
+        `;
+            const msgBtn = document.getElementById('detailMessageBtn');
+            if (msgBtn) msgBtn.removeAttribute('data-assignee-id');
+        }
+    }
+
+    // Project
+    setText('detailProjectName', data.project_name || 'No Project');
+    const projectEl = document.getElementById('detailTaskProject');
+    if (projectEl) {
+        projectEl.innerHTML = `
+        <div class="w-12 h-12 rounded-full bg-dark-teal bg-opacity-20 flex items-center justify-center">
+            <i class="fas fa-project-diagram text-dark-teal text-xl"></i>
+        </div>
+        <div class="ml-4">
+            <p class="font-medium text-ink-black">${data.project_name || 'No Project'}</p>
+            <p class="text-sm text-gray-500">Project ID: ${data.project_id || 'N/A'}</p>
+        </div>
+    `;
+    }
+
+    // Created By
+    setText('detailTaskCreatedBy', 'You (Project Manager)');
+
+    // Sprint
+    setText('detailTaskSprint', data.sprint || 'Not assigned to sprint');
+
+    // Action Buttons
+    const detailEditBtn = document.getElementById('detailEditBtn');
+    const detailApproveBtn = document.getElementById('detailApproveBtn');
+    const detailRequestChangesBtn = document.getElementById('detailRequestChangesBtn');
+    if (detailEditBtn) detailEditBtn.setAttribute('data-task-id', data.task_id);
+
+    // Show/hide action buttons based on status
+    if (data.status === 'review') {
+        if (detailApproveBtn) { detailApproveBtn.classList.remove('hidden'); detailApproveBtn.setAttribute('data-task-id', data.task_id); }
+        if (detailRequestChangesBtn) { detailRequestChangesBtn.classList.remove('hidden'); detailRequestChangesBtn.setAttribute('data-task-id', data.task_id); }
+    } else {
+        if (detailApproveBtn) detailApproveBtn.classList.add('hidden');
+        if (detailRequestChangesBtn) detailRequestChangesBtn.classList.add('hidden');
+    }
+
+    // Timeline dates (simplified for now - in a real app, you'd fetch these from an API)
+    const createdDate = data.created_at ? new Date(data.created_at.split(' ')[0]) : new Date();
+    setText('detailTimelineTodo', `Started: ${createdDate.toLocaleDateString()}`);
+    setText('detailTimelineProgress', '--');
+    setText('detailTimelineReview', '--');
+    setText('detailTimelineDone', data.completed_at ? `Completed: ${data.completed_at.split(' ')[0]}` : '--');
+}
+
+// Load task data for editing
+function loadTaskForEditing(taskId) {
+    showToast('Loading', 'Fetching task details...', 'info');
+    
+    fetch(getTaskApiUrl.replace('0', taskId))
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Populate form fields
+                document.getElementById('editTaskId').value = data.task_id;
+                document.getElementById('editTaskTitleInput').value = data.task_title;
+                document.getElementById('editTaskDescription').value = data.description || '';
+                document.getElementById('editTaskProject').value = data.project_id;
+                
+                // Populate assignee select
+                const assigneeEl = document.getElementById('editTaskAssignee');
+                if (assigneeEl) {
+                    // Clear existing options except the first one
+                    while (assigneeEl.options.length > 1) {
+                        assigneeEl.remove(1);
+                    }
+                    
+                    // Add new options from API response
+                    if (Array.isArray(data.assignee_options)) {
+                        data.assignee_options.forEach(opt => {
+                            const option = document.createElement('option');
+                            option.value = opt.id;
+                            option.textContent = opt.name;
+                            assigneeEl.appendChild(option);
+                        });
+                    }
+                    
+                    // Set the selected value
+                    assigneeEl.value = data.assignee_id || '';
+                }
+                
+                document.getElementById('editTaskType').value = data.task_type || 'feature';
+                document.getElementById('editTaskPriority').value = data.priority;
+                document.getElementById('editTaskDueDate').value = data.due_date;
+                document.getElementById('editTaskStatus').value = data.status;
+                document.getElementById('editTaskEstimatedHours').value = data.estimated_hours || '';
+                document.getElementById('editTaskActualHours').value = data.actual_hours || '';
+                document.getElementById('editTaskProgress').value = data.progress || 0;
+                document.getElementById('editTaskProgressValue').textContent = (data.progress || 0) + '%';
+                
+                // Update modal title
+                document.getElementById('editTaskTitle').textContent = `Edit Task: ${data.task_title}`;
+                
+                // Show modal
+                openModal('editTaskModal');
+                
+                showToast('Success', 'Task loaded successfully', 'success');
+            } else {
+                showToast('Error', data.error || 'Failed to load task', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error', 'Error loading task data: ' + error.message, 'error');
+        });
+}
+
+// Update task
+function updateTask() {
+    const taskId = document.getElementById('editTaskId').value;
+    const formData = {
+        title: document.getElementById('editTaskTitleInput').value,
+        description: document.getElementById('editTaskDescription').value,
+        project_id: document.getElementById('editTaskProject').value,
+        assigned_to: document.getElementById('editTaskAssignee').value || '',
+        task_type: document.getElementById('editTaskType').value,
+        priority: document.getElementById('editTaskPriority').value,
+        due_date: document.getElementById('editTaskDueDate').value,
+        status: document.getElementById('editTaskStatus').value,
+        estimated_hours: parseFloat(document.getElementById('editTaskEstimatedHours').value) || 0,
+        actual_hours: parseFloat(document.getElementById('editTaskActualHours').value) || 0,
+        progress: parseInt(document.getElementById('editTaskProgress').value) || 0,
+    };
+    
+    // Basic validation
+    if (!formData.title.trim()) {
+        showToast('Error', 'Task title is required', 'error');
+        return;
+    }
+    
+    if (!formData.due_date) {
+        showToast('Error', 'Due date is required', 'error');
+        return;
+    }
+    
+    showToast('Updating', 'Updating task...', 'info');
+    
+    fetch(updateTaskApiUrl.replace('0', taskId), {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': (window.getCsrfToken ? window.getCsrfToken() : (window.getCSRFToken ? window.getCSRFToken() : '')),
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeModal('editTaskModal');
+            showToast('Success', data.message || 'Task updated successfully!', 'success');
+            // Reload page after a short delay
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            showToast('Error', data.error || 'Failed to update task', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error', 'Error updating task: ' + error.message, 'error');
+    });
+}
+
+// Approve task
+function approveTask(taskId) {
+    showToast('Processing', 'Approving task...', 'info');
+    
+    fetch(approveTaskApiUrl.replace('0', taskId), {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': (window.getCsrfToken ? window.getCsrfToken() : (window.getCSRFToken ? window.getCSRFToken() : '')),
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ task_id: taskId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Success', data.message || 'Task approved successfully!', 'success');
+            // Reload page after a short delay
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            showToast('Error', data.error || 'Failed to approve task', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error', 'Error approving task: ' + error.message, 'error');
+    });
+}
+
+// Request changes
+function requestChanges() {
+    const taskId = document.getElementById('changeTaskId').value;
+    const feedback = document.getElementById('changeFeedback').value;
+    
+    if (!feedback.trim()) {
+        showToast('Error', 'Feedback is required', 'error');
+        return;
+    }
+    
+    showToast('Processing', 'Requesting changes...', 'info');
+    
+    fetch(requestChangesApiUrl.replace('0', taskId), {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': (window.getCsrfToken ? window.getCsrfToken() : (window.getCSRFToken ? window.getCSRFToken() : '')),
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+            task_id: taskId,
+            feedback: feedback
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeModal('requestChangesModal');
+            showToast('Success', data.message || 'Changes requested successfully!', 'success');
+            // Reload page after a short delay
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            showToast('Error', data.error || 'Failed to request changes', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error', 'Error requesting changes: ' + error.message, 'error');
+    });
+}
+
+
+</script>
+
+<style>
+/* Additional responsive styles */
+@media (max-width: 640px) {
+    .modal-content {
+        width: 95% !important;
+        margin: 10px auto;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    
+    /* Better touch targets */
+    button, a {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    /* Adjust table actions for mobile */
+    .table-actions {
+        justify-content: space-between;
+        flex-wrap: wrap;
+    }
+}
+
+/* Truncation for mobile */
+.truncate-mobile {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 120px;
+}
+
+@media (min-width: 768px) {
+    .truncate-mobile {
+        max-width: none;
+    }
+}
+
+/* Line clamp for descriptions */
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Responsive table adjustments */
+@media (max-width: 768px) {
+    .table-cell-hidden {
+        display: none;
+    }
+}
+
+/* Edit button styling */
+.edit-task, .view-details {
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.edit-task:hover {
+    color: #0a9396 !important;
+}
+
+.view-details:hover {
+    color: #005f73 !important;
+}
+
+/* Task detail modal styles */
+#detailTaskHoursLogged {
+    transition: width 0.5s ease;
+}
+
+#detailTaskHoursRemainingBar {
+    transition: width 0.5s ease;
+}
+
+#detailTaskProgressBar {
+    transition: width 0.5s ease;
+}
+
+/* Quick stats cards */
+.text-center.p-3.bg-white.rounded-lg.shadow-sm {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.text-center.p-3.bg-white.rounded-lg.shadow-sm:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+</style>
+{% endblock %}

@@ -1,0 +1,1333 @@
+{% extends 'pm/base.html' %}
+
+{% block page_title %}Team Management{% endblock %}
+
+{% block header_actions %}
+<button id="addMemberBtn" class="bg-dark-teal text-white px-4 py-2 rounded-lg flex items-center">
+    <i class="fas fa-user-plus mr-2"></i>
+    <span>Add Member</span>
+</button>
+{% endblock %}
+
+{% block content %}
+    <!-- Filters and Search -->
+    <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
+            <div class="flex flex-wrap gap-2">
+                <button class="filter-active px-3 py-1 rounded-full text-sm transition" data-role="">All Members</button>
+                <button class="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200 transition" data-role="dev">Developers</button>
+                <button class="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200 transition" data-role="designer">Designers</button>
+                <button class="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200 transition" data-role="qa">QA</button>
+                <button class="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200 transition" data-status="available">Available</button>
+            </div>
+            
+            <div class="flex space-x-3 w-full md:w-auto">
+                <div class="relative flex-1 md:w-64">
+                    <input type="text" id="teamSearch" placeholder="Search team members..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-dark-teal">
+                    <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                </div>
+                <button class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex items-center">
+                    <i class="fas fa-filter mr-2"></i>
+                    <span>Filters</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Team Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white rounded-xl shadow-sm p-6 card-hover transition">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">Total Team</p>
+                    <h3 class="text-2xl font-bold text-ink-black mt-1">{{ total_team_members }}</h3>
+                </div>
+                <div class="p-3 bg-dark-teal bg-opacity-10 rounded-lg">
+                    <i class="fas fa-users text-dark-teal text-xl"></i>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-4"><span class="text-dark-cyan font-medium">{{ available_members_count }} available</span></p>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-sm p-6 card-hover transition">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">Developers</p>
+                    <h3 class="text-2xl font-bold text-ink-black mt-1">{{ developers_count }}</h3>
+                </div>
+                <div class="p-3 bg-dark-cyan bg-opacity-10 rounded-lg">
+                    <i class="fas fa-code text-dark-cyan text-xl"></i>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-4"><span class="text-dark-cyan font-medium">{{ available_developers }} available</span></p>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-sm p-6 card-hover transition">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">Designers</p>
+                    <h3 class="text-2xl font-bold text-ink-black mt-1">{{ designers_count }}</h3>
+                </div>
+                <div class="p-3 bg-golden-orange bg-opacity-10 rounded-lg">
+                    <i class="fas fa-palette text-golden-orange text-xl"></i>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-4"><span class="text-dark-cyan font-medium">{{ available_designers }} available</span></p>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-sm p-6 card-hover transition">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">QA Engineers</p>
+                    <h3 class="text-2xl font-bold text-ink-black mt-1">{{ qa_count }}</h3>
+                </div>
+                <div class="p-3 bg-rusty-spice bg-opacity-10 rounded-lg">
+                    <i class="fas fa-vial text-rusty-spice text-xl"></i>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-4"><span class="text-dark-cyan font-medium">{{ available_qa }} available</span></p>
+        </div>
+    </div>
+    
+    <!-- Team Members Table -->
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-8">
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-semibold text-ink-black">Team Members</h3>
+                <div class="flex items-center space-x-2">
+                    <div class="relative w-48">
+                        <select id="projectFilter" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-dark-teal">
+                            <option value="">All Projects</option>
+                            {% for project in managed_projects %}
+                            <option value="{{ project.id }}">{{ project.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team Member</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Projects</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200" id="teamMembersTable">
+                    {% for member in team_members %}
+                    <tr class="hover:bg-gray-50 transition member-row" data-role="{{ member.role }}" data-status="{{ member.workload_status }}" data-project-id="{{ member.primary_project_id|default:'' }}">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 rounded-full {{ member.color_class }} flex items-center justify-center text-white font-bold">
+                                    {{ member.initials }}
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900">{{ member.name }}</div>
+                                    <div class="text-sm text-gray-500">{{ member.job_position }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 py-1 text-xs rounded-full role-{{ member.role }}">
+                                {{ member.role_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ member.email }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex -space-x-2">
+                                {% for project in member.projects %}
+                                    {% if forloop.counter <= 3 %}
+                                    <div class="w-8 h-8 rounded-full bg-{{ project.color }} flex items-center justify-center text-white text-xs font-bold border-2 border-white" title="{{ project.name }}">
+                                        {{ project.initials }}
+                                    </div>
+                                    {% endif %}
+                                {% endfor %}
+                                {% if member.project_count > 3 %}
+                                    <div class="w-8 h-8 rounded-full bg-gray-400 flex items-center justify-center text-white text-xs font-bold border-2 border-white" title="And {{ member.project_count|add:'-3' }} more projects">
+                                        +{{ member.project_count|add:'-3' }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 py-1 text-xs rounded-full status-{{ member.workload_status }}">
+                                {{ member.workload_status|title }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button class="text-dark-teal hover:text-dark-cyan mr-3 edit-member" 
+                                    data-member-id="{{ member.employee_id }}"
+                                    data-member-name="{{ member.name }}"
+                                    data-current-role="{{ member.role }}"
+                                    data-current-projects="{{ member.project_ids|join:',' }}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+
+                            <button class="text-gray-600 hover:text-gray-800 view-member" 
+                                    title="View details"
+                                    data-member-id="{{ member.employee_id }}"
+                                    data-member-name="{{ member.name }}"
+                                    data-member-email="{{ member.email }}"
+                                    data-member-position="{{ member.job_position }}"
+                                    data-member-projects-count="{{ member.project_count }}">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                            <div class="flex flex-col items-center">
+                                <i class="fas fa-users text-4xl text-gray-300 mb-2"></i>
+                                <p>No team members found.</p>
+                                <p class="text-sm mt-1">Add team members to get started.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        {% if team_members %}
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+            <div class="flex justify-between items-center">
+                <div class="text-sm text-gray-500">
+                    Showing <span class="font-medium">{{ team_members|length }}</span> of <span class="font-medium">{{ total_team_members }}</span> team members
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Team Workload -->
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-lg font-semibold text-ink-black">Team Workload</h3>
+            <a href="{% url 'pm_reports' %}" class="text-dark-teal text-sm font-medium hover:text-dark-cyan">View Detailed Report</a>
+        </div>
+        
+        <div class="space-y-4" id="workloadContainer">
+            {% for member in team_members %}
+            {% if member.active_tasks > 0 %}
+            <div class="flex items-center justify-between p-4 border border-gray-100 rounded-lg">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-full {{ member.color_class }} flex items-center justify-center text-white font-bold mr-4">
+                        {{ member.initials }}
+                    </div>
+                    <div>
+                        <h4 class="font-medium">{{ member.name }}</h4>
+                        <p class="text-sm text-gray-500">{{ member.job_position }}</p>
+                    </div>
+                </div>
+                <div class="w-48">
+                    <div class="flex justify-between text-sm text-gray-600 mb-1">
+                        <span>Workload</span>
+                        <span>{{ member.workload_percentage }}%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div class="{{ member.workload_color }} h-2 rounded-full" style="width: {{ member.workload_percentage }}%"></div>
+                    </div>
+                </div>
+                <div class="text-sm text-gray-600">
+                    <span class="font-medium">{{ member.active_tasks }}</span> active tasks
+                </div>
+            </div>
+            {% endif %}
+            {% empty %}
+            <div class="text-center py-8 text-gray-500">
+                <i class="fas fa-tasks text-3xl text-gray-300 mb-2"></i>
+                <p>No workload data available.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .status-available { background-color: rgba(148, 210, 189, 0.1); color: #0a9396; }
+    .status-busy { background-color: rgba(238, 155, 0, 0.1); color: #ee9b00; }
+    .status-away { background-color: rgba(187, 62, 3, 0.1); color: #bb3e03; }
+    .status-offline { background-color: rgba(128, 128, 128, 0.1); color: #666; }
+    
+    .role-dev { background-color: rgba(10, 147, 150, 0.1); color: #0a9396; }
+    .role-designer { background-color: rgba(148, 210, 189, 0.1); color: #94d2bd; }
+    .role-qa { background-color: rgba(187, 62, 3, 0.1); color: #bb3e03; }
+    .role-analyst { background-color: rgba(0, 95, 115, 0.1); color: #005f73; }
+    .role-pm { background-color: rgba(238, 155, 0, 0.1); color: #ee9b00; }
+    .role-other { background-color: rgba(128, 128, 128, 0.1); color: #666; }
+    
+    .filter-active {
+        background-color: #005f73;
+        color: white;
+    }
+    
+    /* Slide-over panel styles */
+    .panel-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.28); z-index: 50; }
+    .slide-over { position: fixed; top: 0; right: 0; height: 100%; width: 28rem; max-width: 100%; background: white; box-shadow: -8px 0 24px rgba(15,23,42,0.15); transform: translateX(100%); transition: transform 0.28s ease-in-out; z-index: 60; overflow-y: auto; }
+    .slide-over.open { transform: translateX(0); }
+    
+    /* Custom styles for Add Member functionality */
+    .employee-details-card {
+        background: linear-gradient(135deg, rgba(148, 210, 189, 0.05) 0%, rgba(10, 147, 150, 0.05) 100%);
+        border: 1px solid rgba(148, 210, 189, 0.2);
+        border-radius: 12px;
+        transition: all 0.3s ease;
+    }
+    
+    .employee-details-card:hover {
+        border-color: rgba(10, 147, 150, 0.4);
+        box-shadow: 0 4px 12px rgba(10, 147, 150, 0.1);
+    }
+    
+    .skill-tag {
+        display: inline-block;
+        background: linear-gradient(135deg, rgba(0, 95, 115, 0.1) 0%, rgba(10, 147, 150, 0.1) 100%);
+        color: #005f73;
+        padding: 3px 10px;
+        border-radius: 16px;
+        font-size: 0.75rem;
+        margin: 2px 4px 2px 0;
+        border: 1px solid rgba(0, 95, 115, 0.2);
+        transition: all 0.2s ease;
+    }
+    
+    .skill-tag:hover {
+        background: linear-gradient(135deg, rgba(0, 95, 115, 0.15) 0%, rgba(10, 147, 150, 0.15) 100%);
+        transform: translateY(-1px);
+    }
+    
+    .role-badge {
+        font-size: 0.7rem;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-weight: 600;
+        display: inline-block;
+        margin-left: 8px;
+    }
+    
+    .role-pm-badge {
+        background: linear-gradient(135deg, rgba(238, 155, 0, 0.15), rgba(202, 103, 2, 0.1));
+        color: #ee9b00;
+        border: 1px solid rgba(238, 155, 0, 0.3);
+    }
+    
+    .role-admin-badge {
+        background: linear-gradient(135deg, rgba(187, 62, 3, 0.15), rgba(174, 32, 18, 0.1));
+        color: #bb3e03;
+        border: 1px solid rgba(187, 62, 3, 0.3);
+    }
+    
+    .loading-spinner-small {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(0, 95, 115, 0.3);
+        border-radius: 50%;
+        border-top-color: #005f73;
+        animation: spin 1s ease-in-out infinite;
+        vertical-align: middle;
+        margin-right: 8px;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    .success-message {
+        background: linear-gradient(135deg, rgba(148, 210, 189, 0.9), rgba(10, 147, 150, 0.9));
+        color: white;
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin: 10px 0;
+        display: none;
+    }
+    
+    .error-message {
+        background: linear-gradient(135deg, rgba(238, 155, 0, 0.9), rgba(202, 103, 2, 0.9));
+        color: white;
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin: 10px 0;
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Add Team Member Modal -->
+<div id="addMemberModal" class="modal">
+    <div class="modal-content max-w-2xl">
+        <div class="p-6 border-b border-gray-200">
+            <h3 class="text-xl font-bold text-ink-black">Add Team Member to Project</h3>
+            <p class="text-sm text-dark-cyan mt-1">Add employees to your project team</p>
+        </div>
+        <div class="p-6">
+            <!-- Success and Error Messages -->
+            <div id="addMemberSuccess" class="success-message" style="display: none;">
+                <i class="fas fa-check-circle mr-2"></i>
+                <span id="successMessage"></span>
+            </div>
+            
+            <div id="addMemberError" class="error-message" style="display: none;">
+                <i class="fas fa-exclamation-circle mr-2"></i>
+                <span id="errorMessage"></span>
+            </div>
+            
+            <!-- Add Member Form -->
+            <form id="addMemberForm">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div class="mb-4">
+                        <label for="selectedProject" class="block text-sm font-medium text-gray-700 mb-1">
+                            <i class="fas fa-project-diagram mr-1 text-dark-teal"></i>
+                            Select Project *
+                        </label>
+                        <select id="selectedProject" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal" required>
+                            <option value="">Choose a project</option>
+                            {% for project in managed_projects %}
+                            <option value="{{ project.id }}">{{ project.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Select the project to add the member to</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="selectedEmployee" class="block text-sm font-medium text-gray-700 mb-1">
+                            <i class="fas fa-user mr-1 text-dark-teal"></i>
+                            Select Employee *
+                        </label>
+                        <select id="selectedEmployee" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal" required disabled>
+                            <option value="">Choose an employee</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1" id="employeeCount">Please select a project first</p>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="memberRole" class="block text-sm font-medium text-gray-700 mb-1">
+                        <i class="fas fa-tag mr-1 text-dark-teal"></i>
+                        Role in Project *
+                    </label>
+                    <select id="memberRole" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal" required>
+                        <option value="">Select a role</option>
+                        <option value="dev">Developer</option>
+                        <option value="designer">Designer</option>
+                        <option value="qa">QA Engineer</option>
+                        <option value="analyst">Business Analyst</option>
+                        <option value="pm">Project Manager</option>
+                        <option value="other">Other</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">Select the role this member will have in the project</p>
+                </div>
+                
+                <!-- Employee Details Card (shown when employee is selected) -->
+                <div id="employeeDetails" class="employee-details-card p-4 mb-4" style="display: none;">
+                    <div class="flex justify-between items-start mb-2">
+                        <h4 class="font-medium text-lg text-ink-black" id="employeeName"></h4>
+                        <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded" id="employeeId"></span>
+                    </div>
+                    <div class="space-y-2">
+                        <p class="text-sm text-gray-600 flex items-center">
+                            <i class="fas fa-briefcase mr-2 text-dark-cyan"></i>
+                            <span id="employeePosition"></span>
+                        </p>
+                        <p class="text-sm text-gray-600 flex items-center">
+                            <i class="fas fa-building mr-2 text-dark-cyan"></i>
+                            <span id="employeeDepartment"></span>
+                        </p>
+                        <p class="text-sm text-gray-600 flex items-center">
+                            <i class="fas fa-envelope mr-2 text-dark-cyan"></i>
+                            <span id="employeeEmail"></span>
+                        </p>
+                        <div class="mt-3">
+                            <p class="text-sm font-medium text-gray-700 mb-1">Skills & Expertise</p>
+                            <div id="employeeSkills" class="flex flex-wrap">
+                                <!-- Skills will be inserted here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+                    <button type="button" id="cancelAddMemberBtn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+                    <button type="submit" id="confirmAddMemberBtn" class="px-4 py-2 bg-dark-teal text-white rounded-md hover:bg-dark-cyan transition-colors flex items-center">
+                        <i class="fas fa-user-plus mr-2"></i>
+                        <span>Add to Project</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Team Member Modal -->
+<div id="editMemberModal" class="modal">
+    <div class="modal-content max-w-2xl">
+        <div class="p-6 border-b border-gray-200">
+            <h3 class="text-xl font-bold text-ink-black">Edit Team Member</h3>
+        </div>
+        <div class="p-6">
+            <input type="hidden" id="editEmployeeId">
+            <input type="hidden" id="editProjectIds">
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Team Member</label>
+                <p class="text-gray-800 font-medium text-lg" id="editMemberName"></p>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Current Projects</label>
+                <div id="currentProjectsList" class="space-y-2 mb-3 max-h-60 overflow-y-auto p-2">
+                    <!-- Projects will be loaded here -->
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Add to More Projects</label>
+                <div class="flex space-x-2">
+                    <select id="addToProject" class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal">
+                        <option value="">Select project to add</option>
+                        {% for project in managed_projects %}
+                        <option value="{{ project.id }}">{{ project.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <select id="addProjectRole" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-teal w-40">
+                        <option value="dev">Developer</option>
+                        <option value="designer">Designer</option>
+                        <option value="qa">QA</option>
+                        <option value="analyst">Analyst</option>
+                    </select>
+                    <button id="addProjectBtn" class="px-4 py-2 bg-dark-teal text-white rounded-md hover:bg-dark-cyan transition-colors">
+                        <i class="fas fa-plus mr-1"></i>
+                        Add
+                    </button>
+                </div>
+            </div>
+            
+            <div class="flex justify-end space-x-3 pt-4">
+                <button type="button" id="cancelEditMemberBtn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancel</button>
+                <button type="button" id="saveEditMemberBtn" class="px-4 py-2 bg-dark-teal text-white rounded-md hover:bg-dark-cyan">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide-over Team Member Panel (keeps table visible) -->
+<div id="panelOverlay" class="panel-overlay" onclick="hidePanel(document.getElementById('viewMemberPanel'))"></div>
+<aside id="viewMemberPanel" class="slide-over" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+    <div class="p-6 border-b border-gray-200">
+        <div class="flex justify-between items-start">
+            <h3 id="slide-over-title" class="text-xl font-bold text-ink-black">Member Details</h3>
+            <button aria-label="Close panel" id="closeViewMemberPanel" class="text-gray-500 hover:text-gray-800 text-xl">&times;</button>
+        </div>
+    </div>
+    <div class="p-6">
+        <div class="flex items-center mb-4">
+            <div id="viewMemberAvatar" class="w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-xl mr-4"></div>
+            <div>
+                <h4 id="viewMemberName" class="font-medium text-lg mb-1"></h4>
+                <p id="viewMemberPosition" class="text-sm text-gray-600 mb-1"></p>
+                <p id="viewMemberEmail" class="text-sm text-gray-600"></p>
+            </div>
+        </div>
+        
+        <div class="mb-4">
+            <p class="text-sm text-gray-600">
+                <i class="fas fa-project-diagram mr-2 text-dark-cyan"></i>
+                Projects: <span id="viewMemberProjectsCount" class="font-medium"></span>
+            </p>
+        </div>
+        
+        <div class="mt-4">
+            <h4 class="font-medium mb-2 text-ink-black">Assigned Tasks</h4>
+            <div id="viewMemberTasks" class="space-y-3">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+</aside>
+
+<script>
+    // ========== CORE HELPER FUNCTIONS ==========
+    function escapeHtml(str) {
+        if (!str && str !== 0) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function getCSRFToken() {
+        const name = 'csrftoken';
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function showToast(title, message, type = 'info', duration = 5000) {
+        if (typeof window.showToast === 'function') {
+            window.showToast(title, message, type, duration);
+        } else {
+            alert(`${title}: ${message}`);
+        }
+    }
+
+    function showSuccessModal(title, message) {
+        if (typeof window.showSuccess === 'function') {
+            window.showSuccess(message);
+        } else if (document.getElementById('successModal')) {
+            document.getElementById('successTitle').textContent = title;
+            document.getElementById('successMessage').textContent = message;
+            document.getElementById('successModal').style.display = 'flex';
+            
+            setTimeout(() => {
+                document.getElementById('successModal').style.display = 'none';
+            }, 3000);
+        } else {
+            alert(`${title}: ${message}`);
+        }
+    }
+
+    // ========== MODAL & PANEL MANAGEMENT ==========
+    function showModal(modal) {
+        if (modal) {
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function hideModal(modal) {
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+    }
+
+    function showPanel(panel) {
+        if (!panel) return;
+        panel.classList.add('open');
+        if (panelOverlay) panelOverlay.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function hidePanel(panel) {
+        if (!panel) return;
+        panel.classList.remove('open');
+        if (panelOverlay) panelOverlay.style.display = 'none';
+        document.body.style.overflow = '';
+    }
+
+    // ========== FILTERING FUNCTIONALITY ==========
+    const filterButtons = document.querySelectorAll('[data-role], [data-status]');
+    const memberRows = document.querySelectorAll('.member-row');
+    const searchInput = document.getElementById('teamSearch');
+    const projectFilter = document.getElementById('projectFilter');
+    
+    let currentRoleFilter = '';
+    let currentStatusFilter = '';
+    let currentProjectFilter = '';
+    let currentSearch = '';
+
+    filterButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            filterButtons.forEach(btn => {
+                btn.classList.remove('filter-active', 'bg-dark-teal', 'text-white');
+                btn.classList.add('bg-gray-100', 'text-gray-700');
+            });
+            
+            this.classList.remove('bg-gray-100', 'text-gray-700');
+            this.classList.add('filter-active', 'bg-dark-teal', 'text-white');
+            
+            if (this.hasAttribute('data-role')) {
+                currentRoleFilter = this.getAttribute('data-role');
+                currentStatusFilter = '';
+            } else if (this.hasAttribute('data-status')) {
+                currentStatusFilter = this.getAttribute('data-status');
+                currentRoleFilter = '';
+            }
+            
+            filterTeamMembers();
+        });
+    });
+    
+    projectFilter.addEventListener('change', function() {
+        currentProjectFilter = this.value;
+        filterTeamMembers();
+    });
+    
+    searchInput.addEventListener('input', function() {
+        currentSearch = this.value.toLowerCase();
+        filterTeamMembers();
+    });
+    
+    function filterTeamMembers() {
+        let visibleCount = 0;
+        
+        memberRows.forEach(row => {
+            const role = row.getAttribute('data-role');
+            const status = row.getAttribute('data-status');
+            const projectId = row.getAttribute('data-project-id');
+            const name = row.querySelector('.text-gray-900').textContent.toLowerCase();
+            const position = row.querySelector('.text-gray-500').textContent.toLowerCase();
+            
+            const roleMatch = !currentRoleFilter || role === currentRoleFilter;
+            const statusMatch = !currentStatusFilter || status === currentStatusFilter;
+            const projectMatch = !currentProjectFilter || (projectId && projectId.includes(currentProjectFilter));
+            const searchMatch = !currentSearch || 
+                               name.includes(currentSearch) || 
+                               position.includes(currentSearch) ||
+                               row.querySelectorAll('.text-gray-500')[1]?.textContent.toLowerCase().includes(currentSearch);
+            
+            if (roleMatch && statusMatch && projectMatch && searchMatch) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        const showingElement = document.querySelector('.bg-gray-50 .font-medium');
+        if (showingElement) {
+            showingElement.textContent = visibleCount;
+        }
+    }
+
+    // ========== ADD MEMBER TO PROJECT FUNCTIONALITY ==========
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize filtering
+        filterTeamMembers();
+        
+        // Add Member Button Click Handler
+        document.getElementById('addMemberBtn').addEventListener('click', function() {
+            showModal(document.getElementById('addMemberModal'));
+            resetAddMemberForm();
+        });
+        
+        // Setup Add Member Form
+        setupAddMemberForm();
+        
+        // Setup Edit Member Modal
+        setupEditMemberModal();
+        
+        // Setup View Member Panel
+        setupViewMemberPanel();
+        
+        // Setup Modal Close Handlers
+        setupModalCloseHandlers();
+    });
+
+    function resetAddMemberForm() {
+        const form = document.getElementById('addMemberForm');
+        if (form) form.reset();
+        
+        document.getElementById('selectedEmployee').innerHTML = '<option value="">Choose an employee</option>';
+        document.getElementById('selectedEmployee').disabled = true;
+        document.getElementById('employeeDetails').style.display = 'none';
+        document.getElementById('employeeCount').textContent = 'Please select a project first';
+        document.getElementById('employeeCount').className = 'text-xs text-gray-500 mt-1';
+        
+        document.getElementById('addMemberSuccess').style.display = 'none';
+        document.getElementById('addMemberError').style.display = 'none';
+        
+        // Clear employee skills container
+        const skillsContainer = document.getElementById('employeeSkills');
+        if (skillsContainer) skillsContainer.innerHTML = '';
+    }
+
+    function setupAddMemberForm() {
+        const projectSelect = document.getElementById('selectedProject');
+        const employeeSelect = document.getElementById('selectedEmployee');
+        const form = document.getElementById('addMemberForm');
+        
+        if (!projectSelect || !employeeSelect || !form) return;
+        
+        // Project selection change handler
+        projectSelect.addEventListener('change', async function() {
+            const projectId = this.value;
+            employeeSelect.innerHTML = '<option value="">Choose an employee</option>';
+            employeeSelect.disabled = true;
+            document.getElementById('employeeDetails').style.display = 'none';
+            
+            // Clear messages
+            document.getElementById('addMemberSuccess').style.display = 'none';
+            document.getElementById('addMemberError').style.display = 'none';
+            
+            if (projectId) {
+                document.getElementById('employeeCount').innerHTML = 
+                    '<span class="loading-spinner-small"></span> Loading employees...';
+                
+                try {
+                    const response = await fetch(`/api/projects/${projectId}/available-employees/?mode=add_member`, {
+                        headers: {
+                            'X-CSRFToken': getCSRFToken()
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success && data.employees && data.employees.length > 0) {
+                        employeeSelect.innerHTML = '<option value="">Choose an employee</option>';
+                        
+                        data.employees.forEach(employee => {
+                            const option = document.createElement('option');
+                            option.value = employee.id;
+                            option.textContent = `${employee.name} - ${employee.job_position}`;
+                            
+                            // Store employee details as data attributes
+                            option.setAttribute('data-employee-id', employee.employee_id || employee.id);
+                            option.setAttribute('data-name', employee.name);
+                            option.setAttribute('data-email', employee.email);
+                            option.setAttribute('data-position', employee.job_position);
+                            option.setAttribute('data-department', employee.department || 'No Department');
+                            option.setAttribute('data-skills', employee.skills || 'No skills specified');
+                            option.setAttribute('data-user-role', employee.user_role || 'employee');
+                            
+                            employeeSelect.appendChild(option);
+                        });
+                        
+                        employeeSelect.disabled = false;
+                        document.getElementById('employeeCount').innerHTML = 
+                            `<span class="text-green-600 font-medium">${data.employees.length} employees available</span>`;
+                    } else {
+                        employeeSelect.disabled = false;
+                        document.getElementById('employeeCount').innerHTML = 
+                            `<span class="text-gray-500">No employees available to add to this project</span>`;
+                    }
+                } catch (error) {
+                    console.error('Error loading available employees:', error);
+                    document.getElementById('employeeCount').innerHTML = 
+                        '<span class="text-red-600">Error loading employees. Please try again.</span>';
+                }
+            } else {
+                document.getElementById('employeeCount').textContent = 'Please select a project first';
+                document.getElementById('employeeCount').className = 'text-xs text-gray-500 mt-1';
+            }
+        });
+        
+        // Employee selection change handler
+        employeeSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const detailsDiv = document.getElementById('employeeDetails');
+            
+            if (selectedOption.value) {
+                const employeeId = selectedOption.getAttribute('data-employee-id');
+                const employeeName = selectedOption.getAttribute('data-name');
+                const employeeEmail = selectedOption.getAttribute('data-email');
+                const employeePosition = selectedOption.getAttribute('data-position');
+                const employeeDepartment = selectedOption.getAttribute('data-department');
+                const skills = selectedOption.getAttribute('data-skills');
+                const userRole = selectedOption.getAttribute('data-user-role');
+                
+                // Update employee details
+                document.getElementById('employeeName').textContent = employeeName;
+                document.getElementById('employeeId').textContent = `ID: ${employeeId}`;
+                document.getElementById('employeeEmail').textContent = employeeEmail;
+                document.getElementById('employeePosition').textContent = employeePosition;
+                document.getElementById('employeeDepartment').textContent = employeeDepartment;
+                
+                // Add role badge if user is a PM or Admin
+                if (userRole === 'pm' || userRole === 'admin') {
+                    const roleBadge = document.createElement('span');
+                    roleBadge.className = `role-badge ${userRole === 'pm' ? 'role-pm-badge' : 'role-admin-badge'}`;
+                    roleBadge.textContent = userRole.toUpperCase();
+                    document.getElementById('employeeName').appendChild(roleBadge);
+                }
+                
+                // Format and display skills
+                const skillsContainer = document.getElementById('employeeSkills');
+                skillsContainer.innerHTML = '';
+                
+                if (skills && skills.trim() !== '' && skills !== 'No skills specified') {
+                    const skillsArray = skills.split(',').map(skill => skill.trim()).filter(skill => skill !== '');
+                    
+                    if (skillsArray.length > 0) {
+                        skillsArray.forEach(skill => {
+                            const skillTag = document.createElement('span');
+                            skillTag.className = 'skill-tag';
+                            skillTag.textContent = skill;
+                            skillsContainer.appendChild(skillTag);
+                        });
+                    } else {
+                        skillsContainer.innerHTML = '<span class="text-gray-500 text-sm">No skills specified</span>';
+                    }
+                } else {
+                    skillsContainer.innerHTML = '<span class="text-gray-500 text-sm">No skills specified</span>';
+                }
+                
+                detailsDiv.style.display = 'block';
+            } else {
+                detailsDiv.style.display = 'none';
+            }
+        });
+        
+        // Form submission handler
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const projectSelect = document.getElementById('selectedProject');
+            const employeeSelect = document.getElementById('selectedEmployee');
+            const roleSelect = document.getElementById('memberRole');
+            const projectId = projectSelect.value;
+            const employeeId = employeeSelect.value;
+            const role = roleSelect.value;
+            
+            // Hide any previous messages
+            document.getElementById('addMemberSuccess').style.display = 'none';
+            document.getElementById('addMemberError').style.display = 'none';
+            
+            // Validate inputs
+            if (!projectId) {
+                showError('Please select a project first');
+                projectSelect.focus();
+                return;
+            }
+            
+            if (!employeeId) {
+                showError('Please select an employee to add');
+                employeeSelect.focus();
+                return;
+            }
+            
+            if (!role) {
+                showError('Please select a role for the team member');
+                roleSelect.focus();
+                return;
+            }
+            
+            // Get employee details for confirmation
+            const selectedOption = employeeSelect.options[employeeSelect.selectedIndex];
+            const employeeName = selectedOption.getAttribute('data-name');
+            const projectName = projectSelect.options[projectSelect.selectedIndex].textContent;
+            
+            // Confirm with user
+            if (!confirm(`Add ${employeeName} to "${projectName}" as ${role}?`)) {
+                return;
+            }
+            
+            // Disable button and show loading
+            const submitBtn = document.getElementById('confirmAddMemberBtn');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<span class="loading-spinner-small"></span> Adding...';
+            submitBtn.disabled = true;
+            
+            try {
+                const data = {
+                    project_id: projectId,
+                    employee_id: employeeId,
+                    role: role
+                };
+                
+                const response = await fetch('/api/team/add/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Show success message
+                    showSuccess(`${employeeName} has been successfully added to "${projectName}" as ${result.role || role}.`);
+                    
+                    // Reset form but keep project selected
+                    employeeSelect.innerHTML = '<option value="">Choose an employee</option>';
+                    employeeSelect.disabled = true;
+                    document.getElementById('employeeDetails').style.display = 'none';
+                    roleSelect.value = '';
+                    
+                    // Update employee count
+                    document.getElementById('employeeCount').innerHTML = 
+                        `<span class="text-green-600 font-medium">Success! Member added. Select project again to see updated list.</span>`;
+                    
+                    // Reload page after a delay to show updated team
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    showError(result.error || 'Failed to add team member');
+                }
+            } catch (error) {
+                console.error('Error adding team member:', error);
+                showError('Network error while adding team member');
+            } finally {
+                // Restore button
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+        
+        function showSuccess(message) {
+            const successDiv = document.getElementById('addMemberSuccess');
+            const messageSpan = document.getElementById('successMessage');
+            if (successDiv && messageSpan) {
+                messageSpan.textContent = message;
+                successDiv.style.display = 'block';
+            }
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('addMemberError');
+            const messageSpan = document.getElementById('errorMessage');
+            if (errorDiv && messageSpan) {
+                messageSpan.textContent = message;
+                errorDiv.style.display = 'block';
+            }
+        }
+    }
+
+    function setupEditMemberModal() {
+        const editMemberModal = document.getElementById('editMemberModal');
+        
+        // Edit member buttons
+        document.querySelectorAll('.edit-member').forEach(button => {
+            button.addEventListener('click', function(event) {
+                event.stopPropagation();
+                event.preventDefault();
+                const memberId = this.getAttribute('data-member-id');
+                const memberName = this.getAttribute('data-member-name');
+                const currentRole = this.getAttribute('data-current-role');
+                const projectIds = this.getAttribute('data-current-projects');
+                
+                // Set modal data
+                document.getElementById('editEmployeeId').value = memberId;
+                document.getElementById('editMemberName').textContent = memberName;
+                document.getElementById('editProjectIds').value = projectIds;
+                
+                // Load current projects
+                loadCurrentProjects(memberId, projectIds);
+                
+                showModal(editMemberModal);
+            });
+        });
+        
+        // Cancel button
+        document.getElementById('cancelEditMemberBtn').addEventListener('click', () => {
+            hideModal(editMemberModal);
+        });
+        
+        // Add project button
+        document.getElementById('addProjectBtn').addEventListener('click', function() {
+            const projectId = document.getElementById('addToProject').value;
+            const employeeId = document.getElementById('editEmployeeId').value;
+            const role = document.getElementById('addProjectRole').value;
+            
+            if (!projectId) {
+                alert('Please select a project to add');
+                return;
+            }
+            
+            const data = {
+                project_id: projectId,
+                employee_id: employeeId,
+                role: role
+            };
+            
+            fetch('/api/team/add/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Reload current projects
+                    const currentProjects = document.getElementById('editProjectIds').value;
+                    const newProjects = currentProjects ? currentProjects + ',' + projectId : projectId;
+                    document.getElementById('editProjectIds').value = newProjects;
+                    loadCurrentProjects(employeeId, newProjects);
+                    
+                    // Reset add project form
+                    document.getElementById('addToProject').value = '';
+                    document.getElementById('addProjectRole').value = 'dev';
+                    
+                    showToast('Success', 'Team member added to new project!', 'success');
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while adding to project');
+            });
+        });
+        
+        // Save changes button
+        document.getElementById('saveEditMemberBtn').addEventListener('click', function() {
+            hideModal(editMemberModal);
+            showToast('Success', 'Team member information has been updated.', 'success');
+            
+            // Reload page after a short delay
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        });
+        
+        function loadCurrentProjects(employeeId, projectIds) {
+            const projectsList = document.getElementById('currentProjectsList');
+            projectsList.innerHTML = '';
+            
+            if (!projectIds || projectIds.trim() === '') {
+                projectsList.innerHTML = '<p class="text-gray-500 text-center py-4">No projects assigned</p>';
+                return;
+            }
+            
+            const projectIdArray = projectIds.split(',').filter(id => id.trim() !== '');
+            
+            if (projectIdArray.length === 0) {
+                projectsList.innerHTML = '<p class="text-gray-500 text-center py-4">No projects assigned</p>';
+                return;
+            }
+            
+            // For each project, create a project item
+            projectIdArray.forEach(projectId => {
+                if (projectId) {
+                    fetch(`/api/projects/${projectId}/team-member/${employeeId}/`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                const projectDiv = document.createElement('div');
+                                projectDiv.className = 'flex justify-between items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50';
+                                projectDiv.innerHTML = `
+                                    <div>
+                                        <span class="font-medium text-gray-800">${data.project_name}</span>
+                                        <span class="text-sm text-gray-500 ml-2">(${data.role_display})</span>
+                                    </div>
+                                    <button class="text-rusty-spice hover:text-oxidized-iron remove-from-project transition-colors p-1" 
+                                            data-project-id="${projectId}" 
+                                            data-employee-id="${employeeId}"
+                                            title="Remove from project">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                `;
+                                projectsList.appendChild(projectDiv);
+                                
+                                // Add event listener to remove button
+                                projectDiv.querySelector('.remove-from-project').addEventListener('click', function() {
+                                    const projId = this.getAttribute('data-project-id');
+                                    const empId = this.getAttribute('data-employee-id');
+                                    removeFromProject(projId, empId);
+                                });
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error loading project details:', error);
+                        });
+                }
+            });
+        }
+        
+        function removeFromProject(projectId, employeeId) {
+            if (confirm('Remove this team member from the project? They will no longer have access to project tasks.')) {
+                const data = {
+                    project_id: projectId,
+                    employee_id: employeeId
+                };
+                
+                fetch('/api/team/remove/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update current projects list
+                        const currentProjectIds = document.getElementById('editProjectIds').value;
+                        const projectIdsArray = currentProjectIds.split(',').filter(id => id !== projectId);
+                        document.getElementById('editProjectIds').value = projectIdsArray.join(',');
+                        
+                        // Reload projects list
+                        loadCurrentProjects(employeeId, projectIdsArray.join(','));
+                        
+                        showToast('Success', 'Team member removed from project!', 'success');
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while removing from project');
+                });
+            }
+        }
+    }
+
+    function setupViewMemberPanel() {
+        const viewMemberPanel = document.getElementById('viewMemberPanel');
+        const panelOverlay = document.getElementById('panelOverlay');
+        
+        // View member buttons
+        document.querySelectorAll('.view-member').forEach(button => {
+            button.addEventListener('click', function(event) {
+                event.stopPropagation();
+                event.preventDefault();
+                const memberId = this.getAttribute('data-member-id');
+                const row = this.closest('.member-row');
+                const projectId = row ? row.getAttribute('data-project-id') : null;
+                
+                const nameEl = document.getElementById('viewMemberName');
+                const emailEl = document.getElementById('viewMemberEmail');
+                const positionEl = document.getElementById('viewMemberPosition');
+                const projectsEl = document.getElementById('viewMemberProjectsCount');
+                const avatarEl = document.getElementById('viewMemberAvatar');
+                
+                // Set basic info from data attributes
+                const memberName = this.getAttribute('data-member-name');
+                const memberEmail = this.getAttribute('data-member-email');
+                const memberPosition = this.getAttribute('data-member-position');
+                const projectsCount = this.getAttribute('data-member-projects-count');
+                
+                if (nameEl) nameEl.textContent = memberName || 'Member details';
+                if (emailEl) emailEl.textContent = memberEmail || '';
+                if (positionEl) positionEl.textContent = memberPosition || '';
+                if (projectsEl) projectsEl.textContent = projectsCount || '0';
+                
+                // Set avatar
+                if (avatarEl && memberName) {
+                    const initials = memberName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+                    avatarEl.textContent = initials;
+                    avatarEl.className = 'w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-xl mr-4 bg-dark-teal';
+                }
+                
+                if (!memberId || !projectId) {
+                    const tasksContainer = document.getElementById('viewMemberTasks');
+                    if (tasksContainer) {
+                        tasksContainer.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">No project information available</p>';
+                    }
+                    showPanel(viewMemberPanel);
+                    return;
+                }
+
+                // Fetch detailed member info
+                fetch(`/api/projects/${projectId}/team-member/${memberId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            if (nameEl) nameEl.textContent = data.employee_name || memberName;
+                            if (emailEl) emailEl.textContent = data.email || memberEmail;
+                            if (positionEl) positionEl.textContent = data.position || memberPosition;
+                            if (projectsEl) projectsEl.textContent = data.project_name ? `${data.project_name}` : (data.project_id || '0');
+                            
+                            // Render assigned tasks
+                            const tasksContainer = document.getElementById('viewMemberTasks');
+                            if (tasksContainer) {
+                                tasksContainer.innerHTML = '';
+                                if (data.assigned_tasks && data.assigned_tasks.length) {
+                                    data.assigned_tasks.forEach(t => {
+                                        const taskEl = document.createElement('div');
+                                        taskEl.className = 'p-3 border border-gray-200 rounded-lg hover:bg-gray-50';
+                                        const dueText = t.due_date ? `Due ${t.due_date}` : 'No due date';
+                                        taskEl.innerHTML = `
+                                            <div class="flex justify-between items-center mb-2">
+                                                <div class="font-medium text-gray-800">${escapeHtml(t.title)}</div>
+                                                <div class="text-xs px-2 py-1 rounded-full ${t.status === 'done' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}">
+                                                    ${escapeHtml(t.status_display || t.status || '')}
+                                                </div>
+                                            </div>
+                                            <div class="text-xs text-gray-500 mb-2">${escapeHtml(dueText)}</div>
+                                            <div class="flex items-center">
+                                                <div class="w-full bg-gray-200 rounded-full h-2 mr-2">
+                                                    <div class="bg-dark-teal h-2 rounded-full" style="width: ${Number(t.progress || 0)}%"></div>
+                                                </div>
+                                                <span class="text-xs text-gray-600">${Number(t.progress || 0)}%</span>
+                                            </div>
+                                        `;
+                                        tasksContainer.appendChild(taskEl);
+                                    });
+                                } else {
+                                    tasksContainer.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">No assigned tasks.</p>';
+                                }
+                            }
+                        } else {
+                            if (nameEl) nameEl.textContent = memberName;
+                            const tasksContainer = document.getElementById('viewMemberTasks');
+                            if (tasksContainer) {
+                                tasksContainer.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">Unable to load detailed information.</p>';
+                            }
+                        }
+
+                        showPanel(viewMemberPanel);
+                    })
+                    .catch(err => {
+                        console.error('Error fetching member details:', err);
+                        if (nameEl) nameEl.textContent = memberName;
+                        const tasksContainer = document.getElementById('viewMemberTasks');
+                        if (tasksContainer) {
+                            tasksContainer.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">Error loading details.</p>';
+                        }
+                        showPanel(viewMemberPanel);
+                    });
+            });
+        });
+        
+        // Close panel buttons
+        document.getElementById('closeViewMemberPanel')?.addEventListener('click', function() {
+            hidePanel(viewMemberPanel);
+        });
+        
+        panelOverlay.addEventListener('click', function() {
+            hidePanel(viewMemberPanel);
+        });
+    }
+
+    function setupModalCloseHandlers() {
+        // Cancel button for add member modal
+        document.getElementById('cancelAddMemberBtn').addEventListener('click', () => {
+            hideModal(document.getElementById('addMemberModal'));
+        });
+        
+        // Close modals when clicking outside
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    hideModal(this);
+                }
+            });
+        });
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                document.querySelectorAll('.modal').forEach(modal => {
+                    if (modal.style.display === 'flex') {
+                        hideModal(modal);
+                    }
+                });
+                
+                const viewMemberPanel = document.getElementById('viewMemberPanel');
+                if (viewMemberPanel && viewMemberPanel.classList.contains('open')) {
+                    hidePanel(viewMemberPanel);
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

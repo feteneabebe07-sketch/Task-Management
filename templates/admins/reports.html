@@ -1,0 +1,1272 @@
+{% extends 'admins/base.html' %}
+{% load static %}
+
+{% block title %}Reports & Analytics{% endblock %}
+
+{% block header_title %}Reports & Analytics{% endblock %}
+
+{% block page_title %}Reports & Analytics{% endblock %}
+{% block page_subtitle %}Comprehensive insights and performance metrics{% endblock %}
+
+{% block header_actions %}
+<button class="px-5 py-2.5 border border-vanilla-custard/30 rounded-xl hover:border-dark-teal/50 hover:bg-dark-teal/5 transition-all text-dark-teal font-medium" onclick="exportReports()">
+    <i class="fas fa-download mr-2"></i>
+    Export Reports
+</button>
+<button class="px-5 py-2.5 border border-vanilla-custard/30 rounded-xl hover:border-golden-orange/50 hover:bg-golden-orange/5 transition-all text-golden-orange font-medium" onclick="openReportFilterModal()">
+    <i class="fas fa-filter mr-2"></i>
+    Filter
+</button>
+<button class="btn-primary text-white px-5 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all" onclick="generateCustomReport()">
+    <i class="fas fa-plus mr-2"></i>
+    Generate Report
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6 md:space-y-8">
+    <!-- Key Metrics -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        <!-- Revenue Card -->
+        <div class="stat-card p-5 md:p-6 group cursor-pointer" onclick="loadMetricDetails('revenue')">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-dark-cyan/70 text-sm font-medium">Total Revenue</p>
+                    <h3 class="text-2xl md:text-3xl font-bold text-ink-black mt-2">${{ total_revenue|default:"245,680" }}</h3>
+                </div>
+                <div class="p-3 bg-gradient-to-br from-dark-teal/10 to-dark-cyan/10 rounded-xl group-hover:from-dark-teal/20 group-hover:to-dark-cyan/20 transition-all">
+                    <i class="fas fa-dollar-sign text-dark-teal text-xl md:text-2xl"></i>
+                </div>
+            </div>
+            <div class="flex items-center text-sm">
+                <span class="text-dark-cyan font-medium flex items-center">
+                    <i class="fas fa-arrow-up mr-1 text-xs"></i>
+                    +{{ revenue_growth|default:"12.5" }}% growth
+                </span>
+                <div class="ml-auto bg-dark-teal/10 text-dark-teal text-xs px-2 py-1 rounded-full">
+                    This quarter
+                </div>
+            </div>
+        </div>
+        
+        <!-- Active Projects Card -->
+        <div class="stat-card p-5 md:p-6 group cursor-pointer" onclick="loadMetricDetails('projects')">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-dark-cyan/70 text-sm font-medium">Active Projects</p>
+                    <h3 class="text-2xl md:text-3xl font-bold text-ink-black mt-2">{{ active_projects_count|default:"24" }}</h3>
+                </div>
+                <div class="p-3 bg-gradient-to-br from-dark-cyan/10 to-pearl-aqua/10 rounded-xl group-hover:from-dark-cyan/20 group-hover:to-pearl-aqua/20 transition-all">
+                    <i class="fas fa-project-diagram text-dark-cyan text-xl md:text-2xl"></i>
+                </div>
+            </div>
+            <div class="flex items-center text-sm">
+                <span class="text-dark-cyan font-medium flex items-center">
+                    <i class="fas fa-chart-line mr-1 text-xs"></i>
+                    {{ completion_rate|default:"78" }}% on track
+                </span>
+                <div class="ml-auto bg-dark-cyan/10 text-dark-cyan text-xs px-2 py-1 rounded-full">
+                    {{ delayed_projects|default:"3" }} delayed
+                </div>
+            </div>
+        </div>
+        
+        <!-- Employee Productivity -->
+        <div class="stat-card p-5 md:p-6 group cursor-pointer" onclick="loadMetricDetails('productivity')">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-dark-cyan/70 text-sm font-medium">Productivity</p>
+                    <h3 class="text-2xl md:text-3xl font-bold text-ink-black mt-2">{{ productivity_score|default:"89" }}%</h3>
+                </div>
+                <div class="p-3 bg-gradient-to-br from-golden-orange/10 to-burnt-caramel/10 rounded-xl group-hover:from-golden-orange/20 group-hover:to-burnt-caramel/20 transition-all">
+                    <i class="fas fa-tachometer-alt text-golden-orange text-xl md:text-2xl"></i>
+                </div>
+            </div>
+            <div class="flex items-center text-sm">
+                <span class="text-golden-orange font-medium flex items-center">
+                    <i class="fas fa-chart-bar mr-1 text-xs"></i>
+                    {{ tasks_completed|default:"1,245" }} tasks
+                </span>
+                <div class="ml-auto bg-golden-orange/10 text-golden-orange text-xs px-2 py-1 rounded-full">
+                    High
+                </div>
+            </div>
+        </div>
+        
+        <!-- Client Satisfaction -->
+        <div class="stat-card p-5 md:p-6 group cursor-pointer" onclick="loadMetricDetails('satisfaction')">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-dark-cyan/70 text-sm font-medium">Client Satisfaction</p>
+                    <h3 class="text-2xl md:text-3xl font-bold text-ink-black mt-2">{{ client_satisfaction|default:"4.8" }}/5</h3>
+                </div>
+                <div class="p-3 bg-gradient-to-br from-rusty-spice/10 to-oxidized-iron/10 rounded-xl group-hover:from-rusty-spice/20 group-hover:to-oxidized-iron/20 transition-all">
+                    <i class="fas fa-star text-rusty-spice text-xl md:text-2xl"></i>
+                </div>
+            </div>
+            <div class="flex items-center text-sm">
+                <span class="text-rusty-spice font-medium flex items-center">
+                    <i class="fas fa-smile mr-1 text-xs"></i>
+                    {{ positive_feedback|default:"96" }}% positive
+                </span>
+                <div class="ml-auto bg-rusty-spice/10 text-rusty-spice text-xs px-2 py-1 rounded-full">
+                    Excellent
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Charts Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+        <!-- Revenue Chart -->
+        <div class="stat-card p-6">
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+                <div>
+                    <h3 class="text-lg md:text-xl font-bold text-ink-black mb-1">Revenue Overview</h3>
+                    <p class="text-dark-cyan/70 text-sm">Monthly revenue performance</p>
+                </div>
+                <div class="flex items-center space-x-2 mt-4 md:mt-0">
+                    <select id="revenuePeriod" class="px-3 py-1.5 border border-vanilla-custard/30 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-dark-teal">
+                        <option>This Year</option>
+                        <option>Last Year</option>
+                        <option>Last 6 Months</option>
+                        <option>Last Quarter</option>
+                    </select>
+                </div>
+            </div>
+            <div class="h-64 flex items-center justify-center" id="revenueChart">
+                <canvas id="revenueChartCanvas"></canvas>
+            </div>
+        </div>
+        
+        <!-- Project Status Distribution -->
+        <div class="stat-card p-6">
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+                <div>
+                    <h3 class="text-lg md:text-xl font-bold text-ink-black mb-1">Project Status</h3>
+                    <p class="text-dark-cyan/70 text-sm">Distribution across all projects</p>
+                </div>
+                <div class="flex items-center space-x-2 mt-4 md:mt-0">
+                    <select id="projectFilter" class="px-3 py-1.5 border border-vanilla-custard/30 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-dark-teal">
+                        <option>All Departments</option>
+                        {% for department in departments %}
+                        <option>{{ department.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="h-64 flex items-center justify-center" id="projectChart">
+                <canvas id="projectChartCanvas"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Detailed Reports -->
+    <div class="stat-card p-6">
+        <!-- Table Header -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+            <div>
+                <h3 class="text-lg md:text-xl font-bold text-ink-black mb-1">Detailed Reports</h3>
+                <p class="text-dark-cyan/70 text-sm">All generated reports and analytics</p>
+            </div>
+            <div class="flex items-center space-x-3 mt-4 md:mt-0">
+                <div class="relative">
+                    <input type="text" id="reportSearch" 
+                           placeholder="Search reports..." 
+                           class="pl-10 pr-4 py-2.5 form-input rounded-xl focus:outline-none focus:w-64 transition-all duration-300 w-full md:w-56">
+                    <i class="fas fa-search absolute left-3 top-3 text-dark-cyan"></i>
+                </div>
+                <button class="px-4 py-2.5 border border-vanilla-custard/30 rounded-xl hover:border-dark-teal/50 hover:bg-dark-teal/5 transition-all text-dark-teal font-medium">
+                    <i class="fas fa-calendar-alt mr-2"></i>
+                    Date Range
+                </button>
+            </div>
+        </div>
+        
+        <!-- Reports Table -->
+        <div class="overflow-x-auto rounded-xl border border-vanilla-custard/30">
+            <table class="w-full">
+                <thead>
+                    <tr class="bg-gradient-to-r from-dark-teal/5 to-dark-cyan/5">
+                        <th class="text-left py-4 px-6 text-sm font-medium text-dark-teal">Report Name</th>
+                        <th class="text-left py-4 px-6 text-sm font-medium text-dark-teal">Type</th>
+                        <th class="text-left py-4 px-6 text-sm font-medium text-dark-teal">Generated By</th>
+                        <th class="text-left py-4 px-6 text-sm font-medium text-dark-teal">Date</th>
+                        <th class="text-left py-4 px-6 text-sm font-medium text-dark-teal">Status</th>
+                        <th class="text-left py-4 px-6 text-sm font-medium text-dark-teal">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100" id="reportsTableBody">
+                    {% for report in reports %}
+                    <tr class="table-row-hover group">
+                        <td class="py-4 px-6">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 rounded-lg flex items-center justify-center mr-3 shadow-md 
+                                    {% if report.type == 'financial' %}bg-gradient-to-br from-dark-teal/10 to-dark-teal/20
+                                    {% elif report.type == 'project' %}bg-gradient-to-br from-dark-cyan/10 to-dark-cyan/20
+                                    {% elif report.type == 'hr' %}bg-gradient-to-br from-golden-orange/10 to-golden-orange/20
+                                    {% else %}bg-gradient-to-br from-pearl-aqua/10 to-pearl-aqua/20{% endif %}">
+                                    <i class="fas 
+                                        {% if report.type == 'financial' %}fa-dollar-sign text-dark-teal
+                                        {% elif report.type == 'project' %}fa-project-diagram text-dark-cyan
+                                        {% elif report.type == 'hr' %}fa-users text-golden-orange
+                                        {% else %}fa-chart-bar text-pearl-aqua{% endif %}
+                                        text-sm"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium text-ink-black text-sm group-hover:text-dark-teal">{{ report.name }}</h4>
+                                    <p class="text-xs text-dark-cyan/70 mt-1">{{ report.description|default:"No description"|truncatechars:60 }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-4 px-6">
+                            {% if report.type == 'financial' %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-dark-teal/10 text-dark-teal">
+                                    <i class="fas fa-dollar-sign mr-1.5 text-xs"></i>
+                                    Financial
+                                </span>
+                            {% elif report.type == 'project' %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-dark-cyan/10 text-dark-cyan">
+                                    <i class="fas fa-project-diagram mr-1.5 text-xs"></i>
+                                    Project
+                                </span>
+                            {% elif report.type == 'hr' %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-golden-orange/10 text-golden-orange">
+                                    <i class="fas fa-users mr-1.5 text-xs"></i>
+                                    HR
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-pearl-aqua/10 text-pearl-aqua">
+                                    <i class="fas fa-chart-bar mr-1.5 text-xs"></i>
+                                    {{ report.type|title }}
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="py-4 px-6">
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-dark-cyan to-dark-teal flex items-center justify-center text-white font-bold text-xs mr-2">
+                                    {{ report.generated_by.first_name|first|upper }}{{ report.generated_by.last_name|first|upper }}
+                                </div>
+                                <span class="text-sm text-ink-black">{{ report.generated_by.get_full_name|default:"System" }}</span>
+                            </div>
+                        </td>
+                        <td class="py-4 px-6">
+                            <div class="flex items-center text-sm text-dark-cyan">
+                                <i class="far fa-calendar-alt mr-2 text-xs"></i>
+                                {{ report.created_at|date:"d M Y" }}
+                            </div>
+                        </td>
+                        <td class="py-4 px-6">
+                            {% if report.status == 'completed' %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-dark-cyan/10 to-pearl-aqua/10 text-dark-cyan border border-dark-cyan/20">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-dark-cyan mr-1.5"></span>
+                                    Completed
+                                </span>
+                            {% elif report.status == 'processing' %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-golden-orange/10 to-burnt-caramel/10 text-golden-orange border border-golden-orange/20">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-golden-orange mr-1.5"></span>
+                                    Processing
+                                </span>
+                            {% elif report.status == 'failed' %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-rusty-spice/10 to-oxidized-iron/10 text-rusty-spice border border-rusty-spice/20">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-rusty-spice mr-1.5"></span>
+                                    Failed
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-vanilla-custard/10 to-dark-cyan/10 text-dark-cyan border border-vanilla-custard/20">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-dark-cyan mr-1.5"></span>
+                                    {{ report.status|title }}
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="py-4 px-6">
+                            <div class="flex items-center space-x-2">
+                                <button onclick="viewReport({{ report.id }})" 
+                                        class="w-8 h-8 flex items-center justify-center rounded-lg bg-dark-teal/10 text-dark-teal hover:bg-dark-teal hover:text-white transition-all duration-300 group"
+                                        data-tooltip="View Report">
+                                    <i class="fas fa-eye text-sm group-hover:scale-110"></i>
+                                </button>
+                                <button onclick="downloadReport({{ report.id }})" 
+                                        class="w-8 h-8 flex items-center justify-center rounded-lg bg-dark-cyan/10 text-dark-cyan hover:bg-dark-cyan hover:text-white transition-all duration-300 group"
+                                        data-tooltip="Download">
+                                    <i class="fas fa-download text-sm group-hover:scale-110"></i>
+                                </button>
+                                <button onclick="shareReport({{ report.id }})" 
+                                        class="w-8 h-8 flex items-center justify-center rounded-lg bg-pearl-aqua/10 text-pearl-aqua hover:bg-pearl-aqua hover:text-white transition-all duration-300 group"
+                                        data-tooltip="Share">
+                                    <i class="fas fa-share-alt text-sm group-hover:scale-110"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="py-12 text-center">
+                            <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-vanilla-custard/20 to-dark-cyan/20 flex items-center justify-center">
+                                <i class="fas fa-chart-bar text-dark-cyan text-2xl"></i>
+                            </div>
+                            <h4 class="text-lg font-medium text-ink-black mb-2">No Reports Generated</h4>
+                            <p class="text-dark-cyan/70 mb-6">Generate your first report to view analytics</p>
+                            <button onclick="generateCustomReport()" class="btn-primary text-white px-5 py-2.5 rounded-xl font-medium">
+                                <i class="fas fa-plus mr-2"></i>
+                                Generate Report
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        <div class="flex flex-col sm:flex-row justify-between items-center mt-6 pt-6 border-t border-vanilla-custard/30">
+            <p class="text-sm text-dark-cyan/70 mb-4 sm:mb-0">
+                Showing <span class="font-medium text-ink-black">{{ reports|length }}</span> reports
+            </p>
+            <div class="flex items-center space-x-2">
+                <button class="w-10 h-10 flex items-center justify-center rounded-lg border border-vanilla-custard/30 hover:border-dark-teal/50 hover:bg-dark-teal/5 transition-all">
+                    <i class="fas fa-chevron-left text-dark-cyan"></i>
+                </button>
+                <span class="text-sm font-medium text-ink-black">Page 1 of 1</span>
+                <button class="w-10 h-10 flex items-center justify-center rounded-lg border border-vanilla-custard/30 hover:border-dark-teal/50 hover:bg-dark-teal/5 transition-all">
+                    <i class="fas fa-chevron-right text-dark-cyan"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_modals %}
+<!-- Generate Report Modal -->
+<div id="generateReportModal" class="fixed inset-0 bg-ink-black/70 overflow-y-auto h-full w-full hidden modal z-50 modal-overlay">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-3xl shadow-2xl rounded-xl bg-white">
+        <div class="relative">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-vanilla-custard/30">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-dark-teal/10 to-dark-cyan/10 flex items-center justify-center mr-3">
+                        <i class="fas fa-chart-bar text-dark-teal text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-ink-black">Generate Custom Report</h3>
+                        <p class="text-sm text-dark-cyan/70">Create a new analytics report</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('generateReportModal')" 
+                        class="text-dark-cyan/70 hover:text-oxidized-iron transition-colors p-2 rounded-full hover:bg-gray-100">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <!-- Form -->
+            <form id="generateReportForm" class="space-y-6">
+                {% csrf_token %}
+                
+                <!-- Report Name -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-heading mr-2 text-dark-cyan"></i>
+                        Report Name *
+                    </label>
+                    <input type="text" name="report_name" 
+                           class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                           placeholder="Enter report name" required>
+                </div>
+                
+                <!-- Report Type -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-tags mr-2 text-dark-cyan"></i>
+                        Report Type *
+                    </label>
+                    <select name="report_type" 
+                            class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                        <option value="">Select report type</option>
+                        <option value="financial" class="text-dark-teal">Financial Report</option>
+                        <option value="project" class="text-dark-cyan">Project Analysis</option>
+                        <option value="hr" class="text-golden-orange">HR & Employee</option>
+                        <option value="client" class="text-rusty-spice">Client Satisfaction</option>
+                        <option value="performance" class="text-pearl-aqua">Performance Metrics</option>
+                    </select>
+                </div>
+                
+                <!-- Date Range -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-calendar-plus mr-2 text-dark-cyan"></i>
+                            Start Date *
+                        </label>
+                        <input type="date" name="start_date" 
+                               class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-calendar-check mr-2 text-dark-cyan"></i>
+                            End Date *
+                        </label>
+                        <input type="date" name="end_date" 
+                               class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                    </div>
+                </div>
+                
+                <!-- Department Filter -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-filter mr-2 text-dark-cyan"></i>
+                        Filter by Department
+                    </label>
+                    <select name="department_filter" 
+                            class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent">
+                        <option value="">All Departments</option>
+                        {% for department in departments %}
+                        <option value="{{ department.id }}">{{ department.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Report Format -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-file-alt mr-2 text-dark-cyan"></i>
+                        Output Format *
+                    </label>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <label class="flex items-center p-3 border border-vanilla-custard/30 rounded-xl cursor-pointer hover:border-dark-teal/50 transition-all">
+                            <input type="radio" name="format" value="pdf" class="mr-2 text-dark-teal" checked>
+                            <div class="flex items-center">
+                                <i class="fas fa-file-pdf text-red-500 text-lg mr-2"></i>
+                                <div>
+                                    <p class="font-medium text-sm">PDF</p>
+                                    <p class="text-xs text-dark-cyan/70">Portable Document</p>
+                                </div>
+                            </div>
+                        </label>
+                        <label class="flex items-center p-3 border border-vanilla-custard/30 rounded-xl cursor-pointer hover:border-dark-teal/50 transition-all">
+                            <input type="radio" name="format" value="excel" class="mr-2 text-dark-teal">
+                            <div class="flex items-center">
+                                <i class="fas fa-file-excel text-green-500 text-lg mr-2"></i>
+                                <div>
+                                    <p class="font-medium text-sm">Excel</p>
+                                    <p class="text-xs text-dark-cyan/70">Spreadsheet</p>
+                                </div>
+                            </div>
+                        </label>
+                        <label class="flex items-center p-3 border border-vanilla-custard/30 rounded-xl cursor-pointer hover:border-dark-teal/50 transition-all">
+                            <input type="radio" name="format" value="html" class="mr-2 text-dark-teal">
+                            <div class="flex items-center">
+                                <i class="fas fa-code text-blue-500 text-lg mr-2"></i>
+                                <div>
+                                    <p class="font-medium text-sm">HTML</p>
+                                    <p class="text-xs text-dark-cyan/70">Web Format</p>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Include Charts -->
+                <div>
+                    <label class="flex items-center">
+                        <input type="checkbox" name="include_charts" class="mr-2 text-dark-teal" checked>
+                        <span class="text-sm font-medium text-dark-teal">Include Charts & Graphs</span>
+                    </label>
+                    <label class="flex items-center mt-2">
+                        <input type="checkbox" name="include_details" class="mr-2 text-dark-teal" checked>
+                        <span class="text-sm font-medium text-dark-teal">Include Detailed Data</span>
+                    </label>
+                    <label class="flex items-center mt-2">
+                        <input type="checkbox" name="send_email" class="mr-2 text-dark-teal">
+                        <span class="text-sm font-medium text-dark-teal">Send to Email</span>
+                    </label>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex justify-end space-x-3 pt-6 border-t border-vanilla-custard/30">
+                    <button type="button" onclick="closeModal('generateReportModal')" 
+                            class="px-5 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-medium">
+                        Cancel
+                    </button>
+                    <button type="button" onclick="submitReportForm()" 
+                            class="px-5 py-3 btn-primary text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all">
+                        <i class="fas fa-magic mr-2"></i>
+                        Generate Report
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- View Report Modal -->
+<div id="viewReportModal" class="fixed inset-0 bg-ink-black/70 overflow-y-auto h-full w-full hidden modal z-50 modal-overlay">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-5xl shadow-2xl rounded-xl bg-white">
+        <div class="relative">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-vanilla-custard/30">
+                <div class="flex items-center">
+                    <div id="viewReportIcon" class="w-12 h-12 rounded-lg bg-gradient-to-br from-dark-teal/10 to-dark-cyan/10 flex items-center justify-center mr-3">
+                        <i class="fas fa-chart-bar text-dark-teal text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-ink-black" id="viewReportTitle">Report Details</h3>
+                        <p class="text-sm text-dark-cyan/70" id="viewReportSubtitle">Loading report information...</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('viewReportModal')" 
+                        class="text-dark-cyan/70 hover:text-oxidized-iron transition-colors p-2 rounded-full hover:bg-gray-100">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <!-- Content -->
+            <div class="space-y-6">
+                <!-- Report Summary -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <div class="bg-gradient-to-br from-dark-teal/5 to-dark-cyan/5 p-5 rounded-xl">
+                        <h4 class="font-medium text-ink-black mb-4 flex items-center">
+                            <i class="fas fa-info-circle mr-2 text-dark-teal"></i>
+                            Basic Information
+                        </h4>
+                        <div class="space-y-3">
+                            <div>
+                                <p class="text-xs text-dark-cyan/70">Report Name</p>
+                                <p class="font-medium text-ink-black mt-1" id="viewReportName"></p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-dark-cyan/70">Type</p>
+                                <p class="mt-1" id="viewReportType"></p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gradient-to-br from-golden-orange/5 to-burnt-caramel/5 p-5 rounded-xl">
+                        <h4 class="font-medium text-ink-black mb-4 flex items-center">
+                            <i class="fas fa-calendar-alt mr-2 text-golden-orange"></i>
+                            Timeline
+                        </h4>
+                        <div class="space-y-3">
+                            <div>
+                                <p class="text-xs text-dark-cyan/70">Date Range</p>
+                                <p class="font-medium text-ink-black mt-1" id="viewReportDateRange"></p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-dark-cyan/70">Generated On</p>
+                                <p class="font-medium text-ink-black mt-1" id="viewReportGeneratedOn"></p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gradient-to-br from-dark-cyan/5 to-pearl-aqua/5 p-5 rounded-xl">
+                        <h4 class="font-medium text-ink-black mb-4 flex items-center">
+                            <i class="fas fa-user-tie mr-2 text-dark-cyan"></i>
+                            Author & Status
+                        </h4>
+                        <div class="space-y-3">
+                            <div>
+                                <p class="text-xs text-dark-cyan/70">Generated By</p>
+                                <div class="flex items-center mt-1" id="viewReportAuthor"></div>
+                            </div>
+                            <div>
+                                <p class="text-xs text-dark-cyan/70">Status</p>
+                                <p class="mt-1" id="viewReportStatus"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Report Preview -->
+                <div class="bg-gradient-to-br from-vanilla-custard/5 to-dark-cyan/5 p-5 rounded-xl">
+                    <h4 class="font-medium text-ink-black mb-4 flex items-center">
+                        <i class="fas fa-chart-line mr-2 text-dark-cyan"></i>
+                        Report Preview
+                    </h4>
+                    <div class="space-y-4">
+                        <div class="p-4 bg-white rounded-lg border border-vanilla-custard/20">
+                            <div class="flex justify-between items-center mb-3">
+                                <h5 class="font-medium text-ink-black">Key Metrics</h5>
+                                <span class="text-xs text-dark-cyan bg-dark-cyan/10 px-2 py-1 rounded-full">Summary</span>
+                            </div>
+                            <div id="reportPreviewMetrics">
+                                <!-- Metrics will be loaded here -->
+                            </div>
+                        </div>
+                        <div class="p-4 bg-white rounded-lg border border-vanilla-custard/20">
+                            <div class="flex justify-between items-center mb-3">
+                                <h5 class="font-medium text-ink-black">Charts & Visualizations</h5>
+                                <span class="text-xs text-dark-cyan bg-dark-cyan/10 px-2 py-1 rounded-full">Interactive</span>
+                            </div>
+                            <div class="h-48 flex items-center justify-center" id="reportPreviewChart">
+                                <canvas id="reportPreviewCanvas"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex justify-end space-x-3 pt-6 border-t border-vanilla-custard/30">
+                    <button type="button" onclick="closeModal('viewReportModal')" 
+                            class="px-5 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-medium">
+                        Close
+                    </button>
+                    <button type="button" onclick="downloadCurrentReport()" 
+                            class="px-5 py-3 btn-secondary text-white rounded-xl font-medium">
+                        <i class="fas fa-download mr-2"></i>
+                        Download Report
+                    </button>
+                    <button type="button" onclick="printReport()" 
+                            class="px-5 py-3 btn-primary text-white rounded-xl font-medium">
+                        <i class="fas fa-print mr-2"></i>
+                        Print
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+
+    
+    // Chart instances
+    let revenueChart = null;
+    let projectChart = null;
+    let previewChart = null;
+    
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set default dates in generate form
+        const today = new Date();
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        
+        const startDateInput = document.querySelector('#generateReportForm input[name="start_date"]');
+        const endDateInput = document.querySelector('#generateReportForm input[name="end_date"]');
+        if (startDateInput && endDateInput) {
+            startDateInput.value = firstDayOfMonth.toISOString().split('T')[0];
+            endDateInput.value = lastDayOfMonth.toISOString().split('T')[0];
+        }
+        
+        // Initialize search functionality
+        const searchInput = document.getElementById('reportSearch');
+        if (searchInput) {
+            searchInput.addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase();
+                const rows = document.querySelectorAll('#reportsTableBody tr');
+                
+                rows.forEach(row => {
+                    const text = row.textContent.toLowerCase();
+                    row.style.display = text.includes(searchTerm) ? '' : 'none';
+                });
+            });
+        }
+        
+        // Initialize charts
+        initializeCharts();
+        
+        // Add hover effects to table rows
+        const tableRows = document.querySelectorAll('#reportsTableBody tr');
+        tableRows.forEach(row => {
+            row.addEventListener('mouseenter', function() {
+                this.classList.add('bg-gradient-to-r', 'from-vanilla-custard/10', 'to-dark-teal/5');
+            });
+            
+            row.addEventListener('mouseleave', function() {
+                this.classList.remove('bg-gradient-to-r', 'from-vanilla-custard/10', 'to-dark-teal/5');
+            });
+        });
+        
+        // Period filter change
+        document.getElementById('revenuePeriod')?.addEventListener('change', function() {
+            updateRevenueChart(this.value);
+        });
+        
+        // Department filter change
+        document.getElementById('projectFilter')?.addEventListener('change', function() {
+            updateProjectChart(this.value);
+        });
+    });
+    
+    // Initialize charts
+    function initializeCharts() {
+        // Revenue Chart
+        const revenueCtx = document.getElementById('revenueChartCanvas');
+        if (revenueCtx) {
+            revenueChart = new Chart(revenueCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                    datasets: [{
+                        label: 'Revenue',
+                        data: [45000, 52000, 48000, 61000, 55000, 72000, 68000, 75000, 82000, 79000, 85000, 92000],
+                        borderColor: '#005f73',
+                        backgroundColor: 'rgba(0, 95, 115, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: '#001219',
+                            titleColor: '#ffffff',
+                            bodyColor: '#ffffff',
+                            borderColor: '#005f73',
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(233, 216, 166, 0.1)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(233, 216, 166, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Project Status Chart
+        const projectCtx = document.getElementById('projectChartCanvas');
+        if (projectCtx) {
+            projectChart = new Chart(projectCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Active', 'Completed', 'On Hold', 'Delayed', 'Planning'],
+                    datasets: [{
+                        data: [24, 18, 6, 3, 8],
+                        backgroundColor: [
+                            '#005f73', // dark-teal
+                            '#0a9396', // dark-cyan
+                            '#e9d8a6', // vanilla-custard
+                            '#ee9b00', // golden-orange
+                            '#94d2bd'  // pearl-aqua
+                        ],
+                        borderColor: '#ffffff',
+                        borderWidth: 2,
+                        hoverOffset: 15
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#001219',
+                            titleColor: '#ffffff',
+                            bodyColor: '#ffffff',
+                            borderColor: '#005f73',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.raw || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = Math.round((value / total) * 100);
+                                    return `${label}: ${value} projects (${percentage}%)`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '60%'
+                }
+            });
+        }
+    }
+    
+    // Update revenue chart based on period
+    function updateRevenueChart(period) {
+        // This would normally fetch new data from the server
+        // For now, we'll just simulate with different data
+        
+        let newData;
+        switch(period) {
+            case 'Last Year':
+                newData = [38000, 42000, 45000, 48000, 52000, 58000, 62000, 65000, 68000, 72000, 75000, 78000];
+                break;
+            case 'Last 6 Months':
+                newData = [null, null, null, null, null, null, 68000, 75000, 82000, 79000, 85000, 92000];
+                break;
+            case 'Last Quarter':
+                newData = [null, null, null, null, null, null, null, null, null, 79000, 85000, 92000];
+                break;
+            default: // This Year
+                newData = [45000, 52000, 48000, 61000, 55000, 72000, 68000, 75000, 82000, 79000, 85000, 92000];
+        }
+        
+        if (revenueChart) {
+            revenueChart.data.datasets[0].data = newData;
+            revenueChart.update();
+        }
+    }
+    
+    // Update project chart based on filter
+    function updateProjectChart(department) {
+        // This would normally fetch new data from the server
+        // For now, we'll just show a loading state
+        
+        if (projectChart) {
+            projectChart.data.datasets[0].data = [0, 0, 0, 0, 0];
+            projectChart.update();
+            
+            setTimeout(() => {
+                // Simulate data loading
+                const data = department === 'All Departments' 
+                    ? [24, 18, 6, 3, 8]
+                    : [12, 9, 3, 1, 4]; // Simulated filtered data
+                
+                projectChart.data.datasets[0].data = data;
+                projectChart.update();
+            }, 500);
+        }
+    }
+    
+    // Modal functions
+    function generateCustomReport() {
+        document.getElementById('generateReportModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+    }
+    
+    function openReportFilterModal() {
+        // This would open a more complex filter modal
+        // For now, we'll just show a toast
+        showToast('Filters', 'Advanced filter options would open here', 'info');
+    }
+    
+    // Generate report function
+    async function submitReportForm() {
+        const form = document.getElementById('generateReportForm');
+        if (!form) return;
+        
+        // Validate form
+        let isValid = true;
+        form.querySelectorAll('[required]').forEach(field => {
+            if (!field.value.trim()) {
+                field.classList.add('border-red-300', 'ring-2', 'ring-red-200');
+                isValid = false;
+            } else {
+                field.classList.remove('border-red-300', 'ring-2', 'ring-red-200');
+            }
+        });
+        
+        // Date validation
+        const startDate = new Date(form.querySelector('input[name="start_date"]').value);
+        const endDate = new Date(form.querySelector('input[name="end_date"]').value);
+        if (endDate <= startDate) {
+            showToast('Validation Error', 'End date must be after start date', 'error');
+            return;
+        }
+        
+        if (!isValid) {
+            showToast('Validation Error', 'Please fill all required fields', 'error');
+            return;
+        }
+        
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        try {
+            showToast('Processing', 'Generating your report...', 'info');
+            
+            const response = await fetch(ADMIN_API_GENERATE_REPORT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showToast('Success', 'Report generated successfully!', 'success');
+                closeModal('generateReportModal');
+                form.reset();
+                
+                // Reload after 1.5 seconds
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('Error', result.error || 'Failed to generate report', 'error');
+            }
+        } catch (error) {
+            console.error('Error generating report:', error);
+            showToast('Error', 'Network error occurred', 'error');
+        }
+    }
+    
+    // View report function
+    async function viewReport(reportId) {
+        try {
+            const response = await fetch(ADMIN_API_GET_REPORT.replace('0', reportId));
+            if (!response.ok) throw new Error('Failed to fetch report details');
+            
+            const report = await response.json();
+            
+            // Populate modal with report data
+            document.getElementById('viewReportTitle').textContent = report.name;
+            document.getElementById('viewReportSubtitle').textContent = report.description || `${report.type.charAt(0).toUpperCase() + report.type.slice(1)} Report`;
+            document.getElementById('viewReportName').textContent = report.name;
+            
+            // Set report type
+            const typeElement = document.getElementById('viewReportType');
+            let typeClass = 'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ';
+            let typeText = report.type ? report.type.charAt(0).toUpperCase() + report.type.slice(1) : 'N/A';
+            
+            if (report.type === 'financial') {
+                typeClass += 'bg-dark-teal/10 text-dark-teal border border-dark-teal/20';
+            } else if (report.type === 'project') {
+                typeClass += 'bg-dark-cyan/10 text-dark-cyan border border-dark-cyan/20';
+            } else if (report.type === 'hr') {
+                typeClass += 'bg-golden-orange/10 text-golden-orange border border-golden-orange/20';
+            } else if (report.type === 'client') {
+                typeClass += 'bg-rusty-spice/10 text-rusty-spice border border-rusty-spice/20';
+            } else {
+                typeClass += 'bg-pearl-aqua/10 text-pearl-aqua border border-pearl-aqua/20';
+            }
+            
+            typeElement.innerHTML = `
+                <span class="${typeClass}">
+                    <i class="fas fa-${getReportIcon(report.type)} mr-1.5 text-xs"></i>
+                    ${typeText}
+                </span>
+            `;
+            
+            // Set date range
+            const startDate = report.start_date ? new Date(report.start_date).toLocaleDateString() : 'N/A';
+            const endDate = report.end_date ? new Date(report.end_date).toLocaleDateString() : 'N/A';
+            document.getElementById('viewReportDateRange').textContent = `${startDate} - ${endDate}`;
+            
+            // Set generated date
+            document.getElementById('viewReportGeneratedOn').textContent = report.created_at ? new Date(report.created_at).toLocaleString() : 'N/A';
+            
+            // Set author
+            const authorElement = document.getElementById('viewReportAuthor');
+            if (report.generated_by) {
+                const fullName = report.generated_by.get_full_name || report.generated_by.username || 'System';
+                const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+                authorElement.innerHTML = `
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-dark-cyan to-dark-teal flex items-center justify-center text-white font-bold text-xs mr-2">
+                            ${initials}
+                        </div>
+                        <span class="font-medium text-sm">${fullName}</span>
+                    </div>
+                `;
+            } else {
+                authorElement.innerHTML = '<span class="text-sm text-dark-cyan/70 italic">System Generated</span>';
+            }
+            
+            // Set status
+            const statusElement = document.getElementById('viewReportStatus');
+            let statusClass = 'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ';
+            let statusText = report.status ? report.status.charAt(0).toUpperCase() + report.status.slice(1) : 'Unknown';
+            
+            if (report.status === 'completed') {
+                statusClass += 'bg-gradient-to-r from-dark-cyan/10 to-pearl-aqua/10 text-dark-cyan border border-dark-cyan/20';
+            } else if (report.status === 'processing') {
+                statusClass += 'bg-gradient-to-r from-golden-orange/10 to-burnt-caramel/10 text-golden-orange border border-golden-orange/20';
+            } else if (report.status === 'failed') {
+                statusClass += 'bg-gradient-to-r from-rusty-spice/10 to-oxidized-iron/10 text-rusty-spice border border-rusty-spice/20';
+            } else {
+                statusClass += 'bg-gradient-to-r from-vanilla-custard/10 to-dark-cyan/10 text-dark-cyan border border-vanilla-custard/20';
+            }
+            
+            statusElement.innerHTML = `
+                <span class="${statusClass}">
+                    <span class="w-1.5 h-1.5 rounded-full mr-1.5 ${report.status === 'completed' ? 'bg-dark-cyan' : report.status === 'processing' ? 'bg-golden-orange' : report.status === 'failed' ? 'bg-rusty-spice' : 'bg-dark-cyan'}"></span>
+                    ${statusText}
+                </span>
+            `;
+            
+            // Set preview metrics
+            const metricsContainer = document.getElementById('reportPreviewMetrics');
+            metricsContainer.innerHTML = '';
+            
+            if (report.metrics && Array.isArray(report.metrics)) {
+                const grid = document.createElement('div');
+                grid.className = 'grid grid-cols-1 md:grid-cols-3 gap-4';
+                
+                report.metrics.forEach(metric => {
+                    const metricEl = document.createElement('div');
+                    metricEl.className = 'p-3 bg-gradient-to-br from-vanilla-custard/5 to-dark-cyan/5 rounded-lg border border-vanilla-custard/20';
+                    metricEl.innerHTML = `
+                        <p class="text-xs text-dark-cyan/70">${metric.name}</p>
+                        <p class="text-lg font-bold text-ink-black mt-1">${metric.value}</p>
+                        <p class="text-xs ${metric.trend >= 0 ? 'text-dark-cyan' : 'text-rusty-spice'} mt-1">
+                            <i class="fas fa-arrow-${metric.trend >= 0 ? 'up' : 'down'} mr-1"></i>
+                            ${Math.abs(metric.trend)}%
+                        </p>
+                    `;
+                    grid.appendChild(metricEl);
+                });
+                
+                metricsContainer.appendChild(grid);
+            } else {
+                // Default metrics
+                const defaultMetrics = [
+                    { name: 'Total Revenue', value: '$245,680', trend: 12.5 },
+                    { name: 'Active Projects', value: '24', trend: 8.3 },
+                    { name: 'Team Productivity', value: '89%', trend: 4.2 }
+                ];
+                
+                const grid = document.createElement('div');
+                grid.className = 'grid grid-cols-1 md:grid-cols-3 gap-4';
+                
+                defaultMetrics.forEach(metric => {
+                    const metricEl = document.createElement('div');
+                    metricEl.className = 'p-3 bg-gradient-to-br from-vanilla-custard/5 to-dark-cyan/5 rounded-lg border border-vanilla-custard/20';
+                    metricEl.innerHTML = `
+                        <p class="text-xs text-dark-cyan/70">${metric.name}</p>
+                        <p class="text-lg font-bold text-ink-black mt-1">${metric.value}</p>
+                        <p class="text-xs ${metric.trend >= 0 ? 'text-dark-cyan' : 'text-rusty-spice'} mt-1">
+                            <i class="fas fa-arrow-${metric.trend >= 0 ? 'up' : 'down'} mr-1"></i>
+                            ${Math.abs(metric.trend)}%
+                        </p>
+                    `;
+                    grid.appendChild(metricEl);
+                });
+                
+                metricsContainer.appendChild(grid);
+            }
+            
+            // Create preview chart
+            const previewCtx = document.getElementById('reportPreviewCanvas');
+            if (previewCtx) {
+                // Destroy existing chart if it exists
+                if (previewChart) {
+                    previewChart.destroy();
+                }
+                
+                // Create new chart based on report type
+                previewChart = new Chart(previewCtx, {
+                    type: report.type === 'financial' ? 'line' : 'bar',
+                    data: getChartDataForReportType(report.type),
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            tooltip: {
+                                backgroundColor: '#001219',
+                                titleColor: '#ffffff',
+                                bodyColor: '#ffffff'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: 'rgba(233, 216, 166, 0.1)'
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    color: 'rgba(233, 216, 166, 0.1)'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Store current report ID for download
+            document.getElementById('viewReportModal').dataset.reportId = reportId;
+            
+            openModal('viewReportModal');
+        } catch (error) {
+            console.error('Error loading report details:', error);
+            showToast('Error', 'Failed to load report details', 'error');
+        }
+    }
+    
+    // Download report function
+    async function downloadReport(reportId) {
+        try {
+            showToast('Processing', 'Preparing download...', 'info');
+            
+            // Create a temporary link to trigger download
+            const downloadUrl = ADMIN_API_DOWNLOAD_REPORT.replace('0', reportId);
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = `report_${reportId}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showToast('Success', 'Report download started', 'success');
+        } catch (error) {
+            console.error('Error downloading report:', error);
+            showToast('Error', 'Failed to download report', 'error');
+        }
+    }
+    
+    function downloadCurrentReport() {
+        const reportId = document.getElementById('viewReportModal').dataset.reportId;
+        if (reportId) {
+            downloadReport(reportId);
+        }
+    }
+    
+    // Share report function
+    async function shareReport(reportId) {
+        try {
+            const response = await fetch(ADMIN_API_GET_REPORT.replace('0', reportId));
+            if (!response.ok) throw new Error('Failed to fetch report details');
+            
+            const report = await response.json();
+            
+            // In a real app, this would open a share modal
+            // For now, we'll show a notification
+            showToast('Share Report', `Share options for "${report.name}" would appear here`, 'info');
+        } catch (error) {
+            console.error('Error sharing report:', error);
+            showToast('Error', 'Failed to load report for sharing', 'error');
+        }
+    }
+    
+    // Export all reports function
+    function exportReports() {
+        // In a real app, this would trigger a bulk export
+        showToast('Export Reports', 'Preparing bulk export of all reports...', 'info');
+        
+        // Simulate export process
+        setTimeout(() => {
+            showToast('Success', 'Reports exported successfully!', 'success');
+        }, 2000);
+    }
+    
+    // Print report function
+    function printReport() {
+        window.print();
+    }
+    
+    // Load metric details
+    async function loadMetricDetails(metric) {
+        showToast('Metric Details', `Loading detailed analysis for ${metric}...`, 'info');
+        // In a real implementation, this would fetch and display detailed metrics
+    }
+    
+    // Helper functions
+    function getReportIcon(reportType) {
+        switch(reportType) {
+            case 'financial': return 'dollar-sign';
+            case 'project': return 'project-diagram';
+            case 'hr': return 'users';
+            case 'client': return 'star';
+            case 'performance': return 'tachometer-alt';
+            default: return 'chart-bar';
+        }
+    }
+    
+    function getChartDataForReportType(reportType) {
+        switch(reportType) {
+            case 'financial':
+                return {
+                    labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+                    datasets: [{
+                        label: 'Revenue ($)',
+                        data: [245000, 312000, 298000, 356000],
+                        borderColor: '#005f73',
+                        backgroundColor: 'rgba(0, 95, 115, 0.1)',
+                        borderWidth: 2,
+                        fill: true
+                    }]
+                };
+            case 'project':
+                return {
+                    labels: ['Completed', 'Active', 'Delayed', 'On Hold'],
+                    datasets: [{
+                        label: 'Projects',
+                        data: [18, 24, 3, 6],
+                        backgroundColor: [
+                            '#0a9396',
+                            '#005f73',
+                            '#ee9b00',
+                            '#e9d8a6'
+                        ]
+                    }]
+                };
+            case 'hr':
+                return {
+                    labels: ['Productivity', 'Attendance', 'Satisfaction', 'Retention'],
+                    datasets: [{
+                        label: 'Score (%)',
+                        data: [89, 94, 91, 87],
+                        backgroundColor: [
+                            '#94d2bd',
+                            '#0a9396',
+                            '#005f73',
+                            '#ee9b00'
+                        ]
+                    }]
+                };
+            default:
+                return {
+                    labels: ['Metric 1', 'Metric 2', 'Metric 3', 'Metric 4'],
+                    datasets: [{
+                        label: 'Values',
+                        data: [75, 82, 69, 91],
+                        backgroundColor: [
+                            '#005f73',
+                            '#0a9396',
+                            '#94d2bd',
+                            '#e9d8a6'
+                        ]
+                    }]
+                };
+        }
+    }
+    
+    // Helper function to open modal
+    function openModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+</script>
+{% endblock %}

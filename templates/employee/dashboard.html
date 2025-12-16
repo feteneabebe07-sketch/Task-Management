@@ -1,0 +1,1184 @@
+
+{% extends 'employee/base.html' %}
+
+{% block title %}ProjectFlow - Employee Dashboard{% endblock %}
+
+{% block page_title %}Employee Dashboard{% endblock %}
+{% block page_subtitle %}Welcome back, {{ user.get_full_name|default:user.username }}! Here's what you need to focus on today.{% endblock %}
+
+{% block header_actions %}
+
+<button onclick="openLogTimeModal()" class="btn-secondary text-white px-4 py-2 rounded-xl text-sm font-medium">
+    <i class="fas fa-clock mr-2"></i>
+    Log Time
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6 md:space-y-8">
+    <!-- Dashboard Stats Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        <!-- Today's Tasks Card -->
+        <div class="stat-card p-5 md:p-6 group cursor-pointer" onclick="window.location.href='{% url 'employee:my_tasks' %}'">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-dark-cyan/70 text-sm font-medium">Today's Tasks</p>
+                    <h3 class="text-2xl md:text-3xl font-bold text-ink-black mt-2">{{ today_tasks_count }}</h3>
+                </div>
+                <div class="p-3 bg-gradient-to-br from-dark-teal/10 to-dark-cyan/10 rounded-xl group-hover:from-dark-teal/20 group-hover:to-dark-cyan/20 transition-all">
+                    <i class="fas fa-tasks text-dark-teal text-xl md:text-2xl"></i>
+                </div>
+            </div>
+            <div class="flex items-center text-sm">
+                <span class="text-dark-cyan font-medium flex items-center">
+                    <i class="fas fa-spinner mr-1 text-xs"></i>
+                    {{ in_progress_tasks_count }} in progress
+                </span>
+                <div class="ml-auto bg-dark-teal/10 text-dark-teal text-xs px-2 py-1 rounded-full">
+                    {{ completed_today_count }} done
+                </div>
+            </div>
+        </div>
+        
+        <!-- Pending Tasks Card -->
+        <div class="stat-card p-5 md:p-6 group cursor-pointer" onclick="window.location.href='{% url 'employee:my_tasks' %}'">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-dark-cyan/70 text-sm font-medium">Pending Tasks</p>
+                    <h3 class="text-2xl md:text-3xl font-bold text-ink-black mt-2">{{ pending_tasks_count }}</h3>
+                </div>
+                <div class="p-3 bg-gradient-to-br from-golden-orange/10 to-burnt-caramel/10 rounded-xl group-hover:from-golden-orange/20 group-hover:to-burnt-caramel/20 transition-all">
+                    <i class="fas fa-clock text-golden-orange text-xl md:text-2xl"></i>
+                </div>
+            </div>
+            <div class="flex items-center text-sm">
+                <span class="text-oxidized-iron font-medium flex items-center">
+                    <i class="fas fa-calendar-exclamation mr-1 text-xs"></i>
+                    {{ due_this_week_count }} due this week
+                </span>
+                <div class="ml-auto bg-golden-orange/10 text-golden-orange text-xs px-2 py-1 rounded-full">
+                    {{ overdue_tasks_count }} overdue
+                </div>
+            </div>
+        </div>
+        
+        <!-- Workload Card -->
+        <div class="stat-card p-5 md:p-6 group cursor-pointer">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-dark-cyan/70 text-sm font-medium">Workload</p>
+                    <h3 class="text-2xl md:text-3xl font-bold text-ink-black mt-2">{{ workload_percentage }}%</h3>
+                </div>
+                <div class="p-3 bg-gradient-to-br from-pearl-aqua/10 to-dark-cyan/10 rounded-xl group-hover:from-pearl-aqua/20 group-hover:to-dark-cyan/20 transition-all">
+                    <i class="fas fa-chart-pie text-pearl-aqua text-xl md:text-2xl"></i>
+                </div>
+            </div>
+            <div class="flex items-center text-sm">
+                <span class="text-dark-cyan font-medium flex items-center">
+                    <i class="fas fa-{{ workload_icon }} mr-1 text-xs"></i>
+                    {{ workload_status }}
+                </span>
+                <div class="ml-auto bg-pearl-aqua/10 text-pearl-aqua text-xs px-2 py-1 rounded-full">
+                    {{ weekly_hours.current|default:0 }}h / {{ weekly_hours.total|default:40 }}h
+                </div>
+            </div>
+        </div>
+        
+        <!-- Time Logged Card -->
+        <div class="stat-card p-5 md:p-6 group cursor-pointer" onclick="window.location.href='{% url 'employee:time_tracking' %}'">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-dark-cyan/70 text-sm font-medium">Time Logged</p>
+                    <h3 class="text-2xl md:text-3xl font-bold text-ink-black mt-2">{{ time_logged_today }}</h3>
+                </div>
+                <div class="p-3 bg-gradient-to-br from-rusty-spice/10 to-oxidized-iron/10 rounded-xl group-hover:from-rusty-spice/20 group-hover:to-oxidized-iron/20 transition-all">
+                    <i class="fas fa-clock-rotate-left text-rusty-spice text-xl md:text-2xl"></i>
+                </div>
+            </div>
+            <div class="flex items-center text-sm">
+                <span class="text-oxidized-iron font-medium flex items-center">
+                    <i class="fas fa-calendar-day mr-1 text-xs"></i>
+                    {{ current_date|date:"M d, Y" }}
+                </span>
+                <div class="ml-auto bg-rusty-spice/10 text-rusty-spice text-xs px-2 py-1 rounded-full">
+                    Today
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Content Area -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+        <!-- Today's Tasks Section -->
+        <div class="lg:col-span-2">
+            <div class="stat-card p-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+                    <div>
+                        <h3 class="text-lg md:text-xl font-bold text-ink-black mb-1">Today's Tasks</h3>
+                        <p class="text-dark-cyan/70 text-sm">Your assigned tasks for today ({{ current_date|date:"M d, Y" }})</p>
+                    </div>
+                    <div class="flex items-center space-x-2 mt-4 md:mt-0">
+                        <a href="{% url 'employee:my_tasks' %}" class="btn-secondary text-white px-4 py-2 rounded-xl text-sm font-medium">
+                            View All Tasks
+                            <i class="fas fa-arrow-right ml-2"></i>
+                        </a>
+                       
+                    </div>
+                </div>
+                
+                {% if today_tasks %}
+                <div class="space-y-4">
+                    {% for task in today_tasks %}
+                    <div class="group border border-vanilla-custard/30 rounded-xl p-4 hover:border-dark-teal/50 transition-all duration-300">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 rounded-full bg-{{ task.priority_color }}-500 mr-3"></div>
+                                <h4 class="font-medium text-ink-black truncate">{{ task.title }}</h4>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <span class="text-sm font-semibold text-{{ task.status_color }}">{{ task.get_status_display }}</span>
+                                <span class="text-xs text-dark-cyan bg-dark-cyan/10 px-2 py-1 rounded-full">
+                                    <i class="fas fa-clock mr-1"></i>
+                                    {{ task.due_date|date:"M d, Y"|default:"No due date" }}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <p class="text-sm text-dark-cyan/70 mb-3">{{ task.description|truncatechars:120 }}</p>
+                        
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-{{ task.priority_color }}/10 text-{{ task.priority_color }}">
+                                    <i class="fas fa-flag mr-1 text-xs"></i>
+                                    {{ task.get_priority_display }}
+                                </span>
+                                <span class="text-xs text-dark-cyan flex items-center">
+                                    <i class="fas fa-project-diagram mr-1"></i>
+                                    {{ task.project.name|default:"General" }}
+                                </span>
+                            </div>
+                            
+                            <div class="flex items-center space-x-2">
+                                {% if task.status != 'done' %}
+                                <form method="post" action="{% url 'employee:update_task_status' task.id %}" class="inline" onsubmit="event.stopPropagation();">
+                                    {% csrf_token %}
+                                    {% if task.status == 'todo' %}
+                                    <button type="submit" name="status" value="in_progress" 
+                                            class="text-xs px-3 py-1.5 bg-golden-orange text-white rounded-lg font-medium hover:bg-burnt-caramel transition-colors">
+                                        <i class="fas fa-play mr-1"></i>
+                                        Start
+                                    </button>
+                                    {% elif task.status == 'in_progress' %}
+                                    
+                                    {% endif %}
+                                </form>
+                                {% endif %}
+                                
+                                
+                            </div>
+                        </div>
+                        
+                        <!-- Progress bar -->
+                        <div class="mt-4">
+                            <div class="flex justify-between text-xs text-dark-cyan/70 mb-1">
+                                <span>Progress</span>
+                                <span>{{ task.progress }}%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="h-2 rounded-full progress-bar bg-gradient-to-r from-{{ task.status_color }} to-{{ task.status_color }}-600" 
+                                     style="width: {{ task.progress }}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-12">
+                    <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-pearl-aqua/20 flex items-center justify-center">
+                        <i class="fas fa-check-circle text-pearl-aqua text-2xl"></i>
+                    </div>
+                    <h4 class="text-lg font-medium text-ink-black mb-2">No Tasks for Today</h4>
+                    <p class="text-dark-cyan/70 mb-4">You're all caught up! Enjoy your day or pick up a task from your backlog.</p>
+                    
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Right Column: Daily Check-in & Quick Actions -->
+        <div class="space-y-6">
+            <!-- Daily Standup Card -->
+            <div class="stat-card p-6">
+                <div class="mb-6">
+                    <h3 class="text-lg md:text-xl font-bold text-ink-black mb-1">Daily Check-in</h3>
+                    <p class="text-dark-cyan/70 text-sm">Share your daily progress and blockers</p>
+                </div>
+                
+                {% if standup %}
+                <div class="space-y-5">
+                    <div class="bg-gradient-to-br from-vanilla-custard/10 to-golden-orange/5 p-4 rounded-xl">
+                        <h4 class="font-medium text-ink-black mb-2 flex items-center">
+                            <i class="fas fa-calendar-day mr-2 text-golden-orange"></i>
+                            Yesterday's Work
+                        </h4>
+                        <p class="text-sm text-dark-cyan/70">{{ standup.yesterday_work }}</p>
+                    </div>
+                    
+                    <div class="bg-gradient-to-br from-pearl-aqua/10 to-dark-cyan/5 p-4 rounded-xl">
+                        <h4 class="font-medium text-ink-black mb-2 flex items-center">
+                            <i class="fas fa-calendar-check mr-2 text-pearl-aqua"></i>
+                            Today's Plan
+                        </h4>
+                        <p class="text-sm text-dark-cyan/70">{{ standup.today_plan }}</p>
+                    </div>
+                    
+                    {% if standup.blockers %}
+                    <div class="bg-gradient-to-br from-rusty-spice/10 to-oxidized-iron/5 p-4 rounded-xl">
+                        <h4 class="font-medium text-ink-black mb-2 flex items-center">
+                            <i class="fas fa-exclamation-triangle mr-2 text-rusty-spice"></i>
+                            Blockers
+                        </h4>
+                        <p class="text-sm text-dark-cyan/70">{{ standup.blockers }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    <button onclick="window.location.href='{% url 'employee:submit_standup' %}'" 
+                            class="w-full btn-secondary text-white py-3 rounded-xl font-medium mt-4">
+                        <i class="fas fa-edit mr-2"></i>
+                        Update Standup
+                    </button>
+                </div>
+                {% else %}
+                <form method="post" action="{% url 'employee:submit_standup' %}" class="space-y-5">
+                    {% csrf_token %}
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-calendar-day mr-2 text-dark-cyan"></i>
+                            Yesterday's Work
+                        </label>
+                        <textarea name="yesterday_work" 
+                                class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                                rows="3" placeholder="What did you complete yesterday?" required></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-calendar-check mr-2 text-dark-cyan"></i>
+                            Today's Plan
+                        </label>
+                        <textarea name="today_plan" 
+                                class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                                rows="3" placeholder="What is your plan for today?" required></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-exclamation-triangle mr-2 text-dark-cyan"></i>
+                            Blockers (Optional)
+                        </label>
+                        <textarea name="blockers" 
+                                class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                                rows="2" placeholder="Any challenges or blockers?"></textarea>
+                    </div>
+                    
+                    <button type="submit" 
+                            class="w-full btn-primary text-white py-3 rounded-xl font-medium">
+                        <i class="fas fa-paper-plane mr-2"></i>
+                        Submit Check-in
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            
+           
+            
+            <!-- Upcoming Deadlines Card -->
+            <div class="stat-card p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h3 class="text-lg font-bold text-ink-black mb-1">Upcoming Deadlines</h3>
+                        <p class="text-dark-cyan/70 text-sm">Tasks due in the next 7 days</p>
+                    </div>
+                    <a href="{% url 'employee:my_tasks' %}" class="text-dark-teal hover:text-golden-orange font-medium text-sm">
+                        View All
+                        <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+                
+                <div class="space-y-4">
+                    {% for deadline in upcoming_deadlines %}
+                    <div class="flex items-center justify-between p-3 border border-vanilla-custard/30 rounded-xl hover:border-{{ deadline.color }}/50 transition-all duration-300">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-{{ deadline.color }}/10 to-{{ deadline.color }}/20 flex items-center justify-center mr-3">
+                                <i class="fas fa-flag text-{{ deadline.color }} text-sm"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-ink-black">{{ deadline.title|truncatechars:25 }}</p>
+                                <p class="text-xs text-dark-cyan/70 mt-1">{{ deadline.project|default:"General" }}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm font-semibold text-{{ deadline.color }}">{{ deadline.days_remaining }} day{{ deadline.days_remaining|pluralize }}</p>
+                            <p class="text-xs text-dark-cyan/70">{{ deadline.date|date:"M d" }}</p>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-6">
+                        <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-vanilla-custard/20 flex items-center justify-center">
+                            <i class="fas fa-calendar-check text-vanilla-custard text-xl"></i>
+                        </div>
+                        <p class="text-sm text-dark-cyan/70">No upcoming deadlines</p>
+                        <p class="text-xs text-dark-cyan/50 mt-1">You're all caught up!</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Activity Section -->
+    <div class="stat-card p-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+            <div>
+                <h3 class="text-lg md:text-xl font-bold text-ink-black mb-1">Recent Activity</h3>
+                <p class="text-dark-cyan/70 text-sm">Your recent actions and updates</p>
+            </div>
+            <a href="" class="text-dark-teal hover:text-golden-orange font-medium text-sm mt-4 md:mt-0">
+                View All Activity
+                <i class="fas fa-arrow-right ml-2"></i>
+            </a>
+        </div>
+        
+        <div class="overflow-x-auto rounded-xl border border-vanilla-custard/30">
+            <table class="w-full">
+                <thead>
+                    <tr class="bg-gradient-to-r from-dark-teal/5 to-dark-cyan/5">
+                        <th class="text-left py-4 px-6 text-sm font-medium text-dark-teal">Task</th>
+                        <th class="text-left py-4 px-6 text-sm font-medium text-dark-teal">Project</th>
+                        <th class="text-left py-4 px-6 text-sm font-medium text-dark-teal">Status</th>
+                        <th class="text-left py-4 px-6 text-sm font-medium text-dark-teal">Time</th>
+                        <th class="text-left py-4 px-6 text-sm font-medium text-dark-teal">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for task in recent_tasks %}
+                    <tr class="table-row-hover">
+                        <td class="py-4 px-6">
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center mr-3 bg-gradient-to-br from-{{ task.status_color }}/10 to-{{ task.status_color }}/20">
+                                    <i class="fas fa-tasks text-{{ task.status_color }} text-sm"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-ink-black text-sm">{{ task.title }}</p>
+                                    <p class="text-xs text-dark-cyan/70 mt-1">{{ task.description|truncatechars:40 }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-4 px-6">
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 rounded-full bg-{{ task.priority_color }} mr-2"></div>
+                                <span class="text-sm text-ink-black">{{ task.project.name|default:"General" }}</span>
+                            </div>
+                        </td>
+                        <td class="py-4 px-6">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-{{ task.status_color }}/10 text-{{ task.status_color }}">
+                                <span class="w-1.5 h-1.5 rounded-full bg-{{ task.status_color }} mr-1.5"></span>
+                                {{ task.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="py-4 px-6">
+                            <div class="flex items-center text-sm text-dark-cyan">
+                                <i class="far fa-clock mr-2 text-xs"></i>
+                                {{ task.updated_at|timesince }} ago
+                            </div>
+                        </td>
+                        <td class="py-4 px-6">
+                            <div class="flex items-center space-x-2">
+                                <button onclick="openTaskModal({{ task.id }})" 
+                                        class="text-xs px-3 py-1 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                                    <i class="fas fa-eye mr-1"></i>
+                                    View
+                                </button>
+                                {% if task.status != 'done' %}
+                                <form method="post" action="{% url 'employee:update_task_status' task.id %}" class="inline">
+                                    {% csrf_token %}
+                                    {% if task.status == 'todo' %}
+                                    <button type="submit" name="status" value="in_progress" 
+                                            class="text-xs px-3 py-1 bg-golden-orange text-white rounded-lg hover:bg-burnt-caramel transition-colors">
+                                        <i class="fas fa-play mr-1"></i>
+                                        Start
+                                    </button>
+                                    {% elif task.status == 'in_progress' %}
+                                    <button type="submit" name="status" value="done" 
+                                            class="text-xs px-3 py-1 bg-pearl-aqua text-ink-black rounded-lg hover:bg-dark-cyan hover:text-white transition-colors">
+                                        <i class="fas fa-check mr-1"></i>
+                                        Complete
+                                    </button>
+                                    {% endif %}
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="py-12 text-center">
+                            <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-vanilla-custard/20 flex items-center justify-center">
+                                <i class="fas fa-history text-vanilla-custard text-2xl"></i>
+                            </div>
+                            <h4 class="text-lg font-medium text-ink-black mb-2">No Recent Activity</h4>
+                            <p class="text-dark-cyan/70">Start working on tasks to see activity here</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_modals %}
+<!-- Create Task Modal -->
+<div id="createTaskModal" class="fixed inset-0 bg-ink-black/70 overflow-y-auto h-full w-full hidden modal z-50 modal-overlay">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-lg shadow-2xl rounded-xl bg-white">
+        <div class="relative">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-vanilla-custard/30">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-dark-teal/10 to-dark-cyan/10 flex items-center justify-center mr-3">
+                        <i class="fas fa-plus text-dark-teal text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-ink-black">Create Task</h3>
+                        <p class="text-sm text-dark-cyan/70">Add a new personal task</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('createTaskModal')" 
+                        class="text-dark-cyan/70 hover:text-oxidized-iron transition-colors p-2 rounded-full hover:bg-gray-100">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <!-- Form -->
+            <form id="createTaskForm" class="space-y-5">
+                {% csrf_token %}
+                
+                <!-- Task Title -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-heading mr-2 text-dark-cyan"></i>
+                        Task Title
+                    </label>
+                    <input type="text" name="title" 
+                           class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                           placeholder="Enter task title" required>
+                </div>
+                
+                <!-- Description -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-align-left mr-2 text-dark-cyan"></i>
+                        Description
+                    </label>
+                    <textarea name="description" 
+                              class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                              rows="3" placeholder="Describe the task"></textarea>
+                </div>
+                
+                <!-- Priority & Due Date -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-flag mr-2 text-dark-cyan"></i>
+                            Priority
+                        </label>
+                        <select name="priority" 
+                                class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-calendar-day mr-2 text-dark-cyan"></i>
+                            Due Date
+                        </label>
+                        <input type="date" name="due_date" 
+                               class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                    </div>
+                </div>
+                
+                <!-- Project & Estimated Hours -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-project-diagram mr-2 text-dark-cyan"></i>
+                            Project
+                        </label>
+                        <select name="project" 
+                                class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent">
+                            <option value="">Select project</option>
+                            {% for project in user_projects %}
+                            <option value="{{ project.id }}">{{ project.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-clock mr-2 text-dark-cyan"></i>
+                            Estimated Hours
+                        </label>
+                        <input type="number" name="estimated_hours" 
+                               class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                               placeholder="0" step="0.5">
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex justify-end space-x-3 pt-6 border-t border-vanilla-custard/30">
+                    <button type="button" onclick="closeModal('createTaskModal')" 
+                            class="px-5 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-medium">
+                        Cancel
+                    </button>
+                    <button type="button" onclick="submitTaskForm()" 
+                            class="px-5 py-3 btn-primary text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all">
+                        <i class="fas fa-plus mr-2"></i>
+                        Create Task
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Log Time Modal -->
+<div id="logTimeModal" class="fixed inset-0 bg-ink-black/70 overflow-y-auto h-full w-full hidden modal z-50 modal-overlay">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-lg shadow-2xl rounded-xl bg-white">
+        <div class="relative">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-vanilla-custard/30">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-golden-orange/10 to-burnt-caramel/10 flex items-center justify-center mr-3">
+                        <i class="fas fa-clock text-golden-orange text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-ink-black">Log Time</h3>
+                        <p class="text-sm text-dark-cyan/70">Track your work hours</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('logTimeModal')" 
+                        class="text-dark-cyan/70 hover:text-oxidized-iron transition-colors p-2 rounded-full hover:bg-gray-100">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <!-- Form -->
+            <form id="logTimeForm" class="space-y-5">
+                {% csrf_token %}
+                
+                <!-- Task Selection -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-tasks mr-2 text-dark-cyan"></i>
+                        Select Task
+                    </label>
+                    <select name="task_id" 
+                            class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                        <option value="">Select task</option>
+                        {% for task in available_tasks %}
+                        <option value="{{ task.id }}">
+                            {{ task.title }} • {{ task.project.name|default:"General" }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Date & Hours -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-calendar mr-2 text-dark-cyan"></i>
+                            Date
+                        </label>
+                        <input type="date" name="date" 
+                               class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-hourglass mr-2 text-dark-cyan"></i>
+                            Hours
+                        </label>
+                        <input type="number" name="hours" 
+                               class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                               placeholder="0.0" step="0.5" required>
+                    </div>
+                </div>
+                
+                <!-- Description -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-align-left mr-2 text-dark-cyan"></i>
+                        Description (Optional)
+                    </label>
+                    <textarea name="description" 
+                              class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                              rows="3" placeholder="What did you work on?"></textarea>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex justify-end space-x-3 pt-6 border-t border-vanilla-custard/30">
+                    <button type="button" onclick="closeModal('logTimeModal')" 
+                            class="px-5 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-medium">
+                        Cancel
+                    </button>
+                    <button type="button" onclick="submitTimeLogForm()" 
+                            class="px-5 py-3 btn-primary text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all">
+                        <i class="fas fa-save mr-2"></i>
+                        Log Time
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Message Modal -->
+<div id="messageModal" class="fixed inset-0 bg-ink-black/70 overflow-y-auto h-full w-full hidden modal z-50 modal-overlay">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-lg shadow-2xl rounded-xl bg-white">
+        <div class="relative">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-vanilla-custard/30">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-pearl-aqua/10 to-dark-cyan/10 flex items-center justify-center mr-3">
+                        <i class="fas fa-comments text-pearl-aqua text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-ink-black">Send Message</h3>
+                        <p class="text-sm text-dark-cyan/70">Contact your team members</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('messageModal')" 
+                        class="text-dark-cyan/70 hover:text-oxidized-iron transition-colors p-2 rounded-full hover:bg-gray-100">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <!-- Form -->
+            <form id="messageForm" class="space-y-5">
+                {% csrf_token %}
+                
+                <!-- Recipients -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-users mr-2 text-dark-cyan"></i>
+                        Recipients
+                    </label>
+                    <select name="recipients" multiple
+                            class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                        {% if project_managers %}
+                        <optgroup label="Project Managers">
+                            {% for pm in project_managers %}
+                                <option value="{{ pm.id }}">{% if 'name' in pm %}{{ pm.name }}{% elif 'username' in pm %}{{ pm.username }}{% else %}{{ pm.get_full_name|default:pm.username }}{% endif %}</option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endif %}
+                        {% if team_members %}
+                        <optgroup label="Team Members">
+                            {% for member in team_members %}
+                            <option value="{{ member.id }}">{% if 'name' in member %}{{ member.name }}{% elif 'username' in member %}{{ member.username }}{% else %}{{ member.get_full_name|default:member.username }}{% endif %}</option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endif %}
+                    </select>
+                    <p class="text-xs text-dark-cyan/70 mt-2">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Hold Ctrl/Cmd to select multiple recipients
+                    </p>
+                </div>
+                
+                <!-- Subject -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-tag mr-2 text-dark-cyan"></i>
+                        Subject (Optional)
+                    </label>
+                    <input type="text" name="subject" 
+                           class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                           placeholder="Message subject">
+                </div>
+                
+                <!-- Content -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-align-left mr-2 text-dark-cyan"></i>
+                        Message
+                    </label>
+                    <textarea name="content" 
+                              class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                              rows="5" placeholder="Write your message..." required></textarea>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex justify-end space-x-3 pt-6 border-t border-vanilla-custard/30">
+                    <button type="button" onclick="closeModal('messageModal')" 
+                            class="px-5 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-medium">
+                        Cancel
+                    </button>
+                    <button type="button" onclick="submitMessageForm()" 
+                            class="px-5 py-3 btn-primary text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all">
+                        <i class="fas fa-paper-plane mr-2"></i>
+                        Send Message
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Workload Report Modal -->
+<div id="workloadModal" class="fixed inset-0 bg-ink-black/70 overflow-y-auto h-full w-full hidden modal z-50 modal-overlay">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-4xl shadow-2xl rounded-xl bg-white">
+        <div class="relative">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-vanilla-custard/30">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-rusty-spice/10 to-oxidized-iron/10 flex items-center justify-center mr-3">
+                        <i class="fas fa-chart-bar text-rusty-spice text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-ink-black">Workload Report</h3>
+                        <p class="text-sm text-dark-cyan/70">Your workload analysis and statistics</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('workloadModal')" 
+                        class="text-dark-cyan/70 hover:text-oxidized-iron transition-colors p-2 rounded-full hover:bg-gray-100">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <!-- Content -->
+            <div class="space-y-6">
+                <!-- Weekly Overview -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-gradient-to-br from-dark-teal/5 to-dark-cyan/5 p-4 rounded-xl">
+                        <h4 class="font-medium text-ink-black mb-2 flex items-center">
+                            <i class="fas fa-calendar-week mr-2 text-dark-teal"></i>
+                            This Week
+                        </h4>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-2xl font-bold text-ink-black">{{ weekly_hours.current|default:0 }}h</p>
+                                <p class="text-xs text-dark-cyan/70">Logged hours</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm font-medium text-ink-black">{{ weekly_hours.total|default:40 }}h</p>
+                                <p class="text-xs text-dark-cyan/70">Target</p>
+                            </div>
+                        </div>
+                        <div class="mt-3 w-full bg-gray-200 rounded-full h-2">
+                            <div class="h-2 rounded-full bg-gradient-to-r from-dark-teal to-dark-cyan" 
+                                 style="width: {{ weekly_hours.percentage|default:0 }}%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gradient-to-br from-golden-orange/5 to-burnt-caramel/5 p-4 rounded-xl">
+                        <h4 class="font-medium text-ink-black mb-2 flex items-center">
+                            <i class="fas fa-tasks mr-2 text-golden-orange"></i>
+                            Active Tasks
+                        </h4>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-2xl font-bold text-ink-black">{{ pending_tasks_count }}</p>
+                                <p class="text-xs text-dark-cyan/70">Pending</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm font-medium text-ink-black">{{ in_progress_tasks_count }}</p>
+                                <p class="text-xs text-dark-cyan/70">In Progress</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gradient-to-br from-pearl-aqua/5 to-dark-cyan/5 p-4 rounded-xl">
+                        <h4 class="font-medium text-ink-black mb-2 flex items-center">
+                            <i class="fas fa-check-circle mr-2 text-pearl-aqua"></i>
+                            Completion
+                        </h4>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-2xl font-bold text-ink-black">{{ completed_today_count }}</p>
+                                <p class="text-xs text-dark-cyan/70">Today</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm font-medium text-ink-black">{{ completion_rate }}%</p>
+                                <p class="text-xs text-dark-cyan/70">Rate</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Time Distribution -->
+                <div class="bg-gradient-to-br from-vanilla-custard/5 to-golden-orange/5 p-4 rounded-xl">
+                    <h4 class="font-medium text-ink-black mb-4 flex items-center">
+                        <i class="fas fa-chart-pie mr-2 text-golden-orange"></i>
+                        Time Distribution (This Week)
+                    </h4>
+                    <div class="space-y-3">
+                        {% for project in time_distribution_list %}
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="font-medium text-ink-black">{{ project.project }}</span>
+                                <span class="text-dark-cyan">{{ project.hours }}h ({{ project.percentage }}%)</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="h-2 rounded-full bg-gradient-to-r from-golden-orange to-burnt-caramel" 
+                                     style="width: {{ project.percentage }}%"></div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-center text-dark-cyan/70 py-4">No time logged this week</p>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Workload Status -->
+                <div class="text-center py-6">
+                    <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-{{ workload_color }}/10 to-{{ workload_color }}/20 mb-4">
+                        <i class="fas fa-{{ workload_icon }} text-{{ workload_color }} text-2xl"></i>
+                    </div>
+                    <h4 class="text-xl font-bold text-ink-black mb-2">{{ workload_status }} Workload</h4>
+                    <p class="text-dark-cyan/70">Your current workload is {{ workload_status|lower }}</p>
+                    <div class="mt-4 inline-flex items-center px-4 py-2 rounded-full bg-{{ workload_color }}/10 text-{{ workload_color }}">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        {{ workload_advice }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    
+    
+
+    const EMPLOYEE_API_SEND_MESSAGE = "{% url 'employee:api_send_message' %}";
+    const EMPLOYEE_API_TASK_DETAIL = "{% url 'employee:api_task_detail' 0 %}";
+
+    // Set default dates in forms
+    document.addEventListener('DOMContentLoaded', function() {
+        const today = new Date().toISOString().split('T')[0];
+        
+        // Set dates in forms
+        const dateInputs = document.querySelectorAll('input[type="date"]');
+        dateInputs.forEach(input => {
+            if (input.name === 'due_date') {
+                input.value = today;
+            } else if (input.name === 'date') {
+                input.value = today;
+            }
+        });
+        
+        // Initialize charts and animations
+        initializeProgressBars();
+        
+        // Poll for updates
+        setInterval(() => {
+            updateNotificationCounts();
+        }, 30000);
+    });
+
+    // Initialize progress bars with animation
+    function initializeProgressBars() {
+        const progressBars = document.querySelectorAll('.progress-bar');
+        progressBars.forEach(bar => {
+            const width = bar.style.width;
+            bar.style.width = '0';
+            setTimeout(() => {
+                bar.style.width = width;
+            }, 100);
+        });
+    }
+    
+    // Open modals
+    function openCreateTaskModal() {
+        document.getElementById('createTaskModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function openLogTimeModal() {
+        document.getElementById('logTimeModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function openMessageModal() {
+        document.getElementById('messageModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function openWorkloadModal() {
+        document.getElementById('workloadModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function openTaskModal(taskId) {
+        // Fetch task details and open modal
+        fetch(EMPLOYEE_API_TASK_DETAIL.replace('0', taskId))
+            .then(response => response.json())
+            .then(data => {
+                showTaskModal(data);
+            })
+            .catch(error => {
+                console.error('Error loading task:', error);
+                showToast('Error', 'Failed to load task details', 'error');
+            });
+    }
+    
+    function showTaskModal(taskData) {
+        // Create and show task detail modal
+        const modalHtml = `
+            <div id="taskDetailModal" class="fixed inset-0 bg-ink-black/70 overflow-y-auto h-full w-full modal z-50 modal-overlay">
+                <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-3xl shadow-2xl rounded-xl bg-white">
+                    <div class="relative">
+                        <!-- Modal Header -->
+                        <div class="flex items-center justify-between pb-4 mb-4 border-b border-vanilla-custard/30">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-${taskData.priority_color}/10 to-${taskData.priority_color}/20 flex items-center justify-center mr-3">
+                                    <i class="fas fa-tasks text-${taskData.priority_color} text-lg"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-bold text-ink-black">${taskData.title}</h3>
+                                    <p class="text-sm text-dark-cyan/70">${taskData.project} • Due: ${taskData.due_date}</p>
+                                </div>
+                            </div>
+                            <button onclick="closeModal('taskDetailModal')" 
+                                    class="text-dark-cyan/70 hover:text-oxidized-iron transition-colors p-2 rounded-full hover:bg-gray-100">
+                                <i class="fas fa-times text-lg"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Task Content -->
+                        <div class="space-y-6">
+                            <div>
+                                <h4 class="font-medium text-ink-black mb-2">Description</h4>
+                                <p class="text-dark-cyan/70">${taskData.description || 'No description provided.'}</p>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="bg-gradient-to-br from-dark-teal/5 to-dark-cyan/5 p-4 rounded-xl">
+                                    <h4 class="font-medium text-ink-black mb-2">Status</h4>
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-${taskData.status_color}/10 text-${taskData.status_color}">
+                                        <span class="w-2 h-2 rounded-full bg-${taskData.status_color} mr-2"></span>
+                                        ${taskData.status_display}
+                                    </span>
+                                </div>
+                                
+                                <div class="bg-gradient-to-br from-golden-orange/5 to-burnt-caramel/5 p-4 rounded-xl">
+                                    <h4 class="font-medium text-ink-black mb-2">Priority</h4>
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-${taskData.priority_color}/10 text-${taskData.priority_color}">
+                                        <i class="fas fa-flag mr-2"></i>
+                                        ${taskData.priority_display}
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <!-- Action Buttons -->
+                            <div class="flex justify-end space-x-3 pt-6 border-t border-vanilla-custard/30">
+                                <button onclick="closeModal('taskDetailModal')" 
+                                        class="px-5 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-medium">
+                                    Close
+                                </button>
+                                <button onclick="window.location.href='/employee/tasks/${taskData.id}/'" 
+                                        class="px-5 py-3 btn-primary text-white rounded-xl font-medium">
+                                    <i class="fas fa-external-link-alt mr-2"></i>
+                                    Open Full View
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('modalContainer').innerHTML = modalHtml;
+        document.getElementById('taskDetailModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    // Form validation
+    function validateForm(formId) {
+        const form = document.getElementById(formId);
+        let isValid = true;
+        
+        form.querySelectorAll('[required]').forEach(field => {
+            if (!field.value.trim()) {
+                field.classList.add('border-red-500');
+                isValid = false;
+            } else {
+                field.classList.remove('border-red-500');
+            }
+        });
+        
+        return isValid;
+    }
+    
+    // Form submissions
+    async function submitTaskForm() {
+        if (!validateForm('createTaskForm')) {
+            showToast('Validation Error', 'Please fill all required fields', 'error');
+            return;
+        }
+        
+        const form = document.getElementById('createTaskForm');
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        try {
+            showToast('Processing', 'Creating task...', 'info');
+            
+            const response = await fetch(EMPLOYEE_API_CREATE_TASK, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showToast('Success', 'Task created successfully!', 'success');
+                closeModal('createTaskModal');
+                form.reset();
+                
+                // Reload after 1.5 seconds
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('Error', result.error || 'Failed to create task', 'error');
+            }
+        } catch (error) {
+            console.error('Form submission error:', error);
+            showToast('Error', 'Network error occurred', 'error');
+        }
+    }
+    
+    async function submitTimeLogForm() {
+        if (!validateForm('logTimeForm')) {
+            showToast('Validation Error', 'Please fill all required fields', 'error');
+            return;
+        }
+        
+        const form = document.getElementById('logTimeForm');
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        try {
+            showToast('Processing', 'Logging time...', 'info');
+            
+            const response = await fetch(EMPLOYEE_API_LOG_TIME, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showToast('Success', 'Time logged successfully!', 'success');
+                closeModal('logTimeModal');
+                form.reset();
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('Error', result.error || 'Failed to log time', 'error');
+            }
+        } catch (error) {
+            console.error('Form submission error:', error);
+            showToast('Error', 'Network error occurred', 'error');
+        }
+    }
+    
+    async function submitMessageForm() {
+        if (!validateForm('messageForm')) {
+            showToast('Validation Error', 'Please fill all required fields', 'error');
+            return;
+        }
+        
+        const form = document.getElementById('messageForm');
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        try {
+            showToast('Processing', 'Sending message...', 'info');
+            
+            const response = await fetch(EMPLOYEE_API_SEND_MESSAGE, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showToast('Success', 'Message sent successfully!', 'success');
+                closeModal('messageModal');
+                form.reset();
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('Error', result.error || 'Failed to send message', 'error');
+            }
+        } catch (error) {
+            console.error('Form submission error:', error);
+            showToast('Error', 'Network error occurred', 'error');
+        }
+    }
+    
+    // Task status update handlers
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle task status updates
+        document.querySelectorAll('.start-task').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const taskCard = this.closest('[data-task-id]');
+                if (taskCard) {
+                    taskCard.classList.add('border-dark-teal');
+                    
+                    // Start timer if not running
+                    const timerRunning = localStorage.getItem('employeeTimerRunning') === 'true';
+                    if (!timerRunning) {
+                        const timerToggle = document.getElementById('timerToggle');
+                        if (timerToggle && timerToggle.innerHTML.includes('fa-play')) {
+                            timerToggle.click();
+                        }
+                    }
+                }
+            });
+        });
+        
+        // Handle task completion
+        document.querySelectorAll('.complete-task').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const taskCard = this.closest('[data-task-id]');
+                if (taskCard) {
+                    taskCard.classList.add('border-pearl-aqua');
+                    taskCard.querySelector('.progress-bar').style.width = '100%';
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

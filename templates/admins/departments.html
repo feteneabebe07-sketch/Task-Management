@@ -1,0 +1,780 @@
+<!-- templates/departments.html -->
+{% extends 'admins/base.html' %}
+{% load static %}
+{% load custom_filters %}
+{% block title %}ProjectFlow - Departments{% endblock %}
+
+{% block header_title %}Departments{% endblock %}
+
+{% block page_title %}Department Management{% endblock %}
+{% block page_subtitle %}Manage and organize company departments{% endblock %}
+
+{% block header_actions %}
+<button onclick="openModal('createDepartmentModal')" class="btn-primary text-white px-4 md:px-6 py-2 md:py-3 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all">
+    <i class="fas fa-plus mr-2"></i>
+    Create Department
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6 md:space-y-8">
+    <!-- Department Stats -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        <div class="stat-card p-5 md:p-6 group cursor-pointer" onclick="showNotification('Total Departments', 'Showing all {{ departments|length }} departments', 'info')">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-dark-cyan/70 text-sm font-medium">Total Departments</p>
+                    <h3 class="text-2xl md:text-3xl font-bold text-ink-black mt-2">{{ departments|length }}</h3>
+                </div>
+                <div class="p-3 bg-gradient-to-br from-dark-teal/10 to-dark-cyan/10 rounded-xl group-hover:from-dark-teal/20 group-hover:to-dark-cyan/20 transition-all">
+                    <i class="fas fa-building text-dark-teal text-xl md:text-2xl"></i>
+                </div>
+            </div>
+            <div class="flex items-center text-sm">
+                {% with recent_depts=0 %}
+                {% for dept in departments %}
+                    {% if dept.created_at and dept.created_at|timesince|slice:":2"|add:"0" <= 30 %}
+                        {% with recent_depts=recent_depts|add:1 %}{% endwith %}
+                    {% endif %}
+                {% endfor %}
+                <span class="text-dark-cyan font-medium flex items-center">
+                    <i class="fas fa-arrow-up mr-1 text-xs"></i>
+                    +{{ recent_depts }} this month
+                </span>
+                {% endwith %}
+            </div>
+        </div>
+        
+        <div class="stat-card p-5 md:p-6 group cursor-pointer" onclick="showNotification('Active Projects', '{{ active_projects }} active projects across all departments', 'info')">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-dark-cyan/70 text-sm font-medium">Active Projects</p>
+                    <h3 class="text-2xl md:text-3xl font-bold text-ink-black mt-2">{{ active_projects }}</h3>
+                </div>
+                <div class="p-3 bg-gradient-to-br from-dark-cyan/10 to-pearl-aqua/10 rounded-xl group-hover:from-dark-cyan/20 group-hover:to-pearl-aqua/20 transition-all">
+                    <i class="fas fa-project-diagram text-dark-cyan text-xl md:text-2xl"></i>
+                </div>
+            </div>
+            <div class="flex items-center text-sm">
+                <span class="text-dark-cyan font-medium flex items-center">
+                    <i class="fas fa-tasks mr-1 text-xs"></i>
+                    Across all departments
+                </span>
+            </div>
+        </div>
+        
+        <div class="stat-card p-5 md:p-6 group cursor-pointer" onclick="showNotification('Total Employees', '{{ total_employees }} total employees distributed across departments', 'info')">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-dark-cyan/70 text-sm font-medium">Total Employees</p>
+                    <h3 class="text-2xl md:text-3xl font-bold text-ink-black mt-2">{{ total_employees }}</h3>
+                </div>
+                <div class="p-3 bg-gradient-to-br from-golden-orange/10 to-burnt-caramel/10 rounded-xl group-hover:from-golden-orange/20 group-hover:to-burnt-caramel/20 transition-all">
+                    <i class="fas fa-users text-golden-orange text-xl md:text-2xl"></i>
+                </div>
+            </div>
+            <div class="flex items-center text-sm">
+                <span class="text-dark-cyan font-medium flex items-center">
+                    <i class="fas fa-users mr-1 text-xs"></i>
+                    Distributed across departments
+                </span>
+            </div>
+        </div>
+        
+        <div class="stat-card p-5 md:p-6 group cursor-pointer" onclick="showNotification('Average Team Size', 'Average team size per department', 'info')">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-dark-cyan/70 text-sm font-medium">Avg. Team Size</p>
+                    <h3 class="text-2xl md:text-3xl font-bold text-ink-black mt-2">
+                        {% with total_employees=0 total_depts=departments|length %}
+                        {% for dept in departments %}
+                            {% with total_employees=total_employees|add:dept.employee_count %}{% endwith %}
+                        {% endfor %}
+                        {% if total_depts > 0 %}
+                            {{ total_employees|divide:total_depts|floatformat:0|default:0 }}
+                        {% else %}
+                            0
+                        {% endif %}
+                        {% endwith %}
+                    </h3>
+                </div>
+                <div class="p-3 bg-gradient-to-br from-rusty-spice/10 to-oxidized-iron/10 rounded-xl group-hover:from-rusty-spice/20 group-hover:to-oxidized-iron/20 transition-all">
+                    <i class="fas fa-user-friends text-rusty-spice text-xl md:text-2xl"></i>
+                </div>
+            </div>
+            <div class="flex items-center text-sm">
+                <span class="text-dark-cyan font-medium flex items-center">
+                    <i class="fas fa-chart-line mr-1 text-xs"></i>
+                    Average per department
+                </span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Departments Table -->
+    <div class="stat-card p-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+            <div>
+                <h3 class="text-lg md:text-xl font-bold text-ink-black mb-1">All Departments</h3>
+                <p class="text-dark-cyan/70 text-sm">Overview of all organizational departments</p>
+            </div>
+            <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 w-full sm:w-auto mt-4 md:mt-0">
+                <div class="relative w-full sm:w-64">
+                    <input type="text" id="departmentSearch" placeholder="Search departments..." 
+                           class="w-full px-4 py-2.5 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent pl-10">
+                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-dark-cyan"></i>
+                </div>
+                <button class="px-4 py-2.5 border border-vanilla-custard/50 rounded-xl hover:bg-vanilla-custard/10 transition-all text-dark-teal font-medium flex items-center justify-center">
+                    <i class="fas fa-filter mr-2 text-golden-orange"></i>
+                    Filter
+                </button>
+            </div>
+        </div>
+        
+        <div class="overflow-x-auto rounded-xl border border-vanilla-custard/30">
+            <table class="w-full min-w-[800px]">
+                <thead>
+                    <tr class="bg-gradient-to-r from-dark-teal/5 to-dark-cyan/5">
+                        <th class="py-4 px-6 text-left text-sm font-medium text-dark-teal">Department</th>
+                        <th class="py-4 px-6 text-left text-sm font-medium text-dark-teal">Manager</th>
+                        <th class="py-4 px-6 text-left text-sm font-medium text-dark-teal">Employees</th>
+                        <th class="py-4 px-6 text-left text-sm font-medium text-dark-teal">Active Projects</th>
+                        <th class="py-4 px-6 text-left text-sm font-medium text-dark-teal">Status</th>
+                        <th class="py-4 px-6 text-left text-sm font-medium text-dark-teal">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for department in departments %}
+                    <tr class="table-row-hover" data-department-id="{{ department.id }}">
+                        <td class="py-4 px-6">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-dark-teal/10 to-dark-cyan/10 flex items-center justify-center mr-4">
+                                    <i class="fas fa-building text-dark-teal text-lg"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium text-ink-black">{{ department.name }}</h4>
+                                    <p class="text-sm text-dark-cyan/70 truncate max-w-xs">{{ department.description|default:"No description"|truncatechars:60 }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-4 px-6">
+                            {% if department.manager %}
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-dark-teal to-dark-cyan flex items-center justify-center text-white font-bold text-sm mr-3">
+                                    {{ department.manager.first_name|first|upper }}{{ department.manager.last_name|first|upper }}
+                                </div>
+                                <div>
+                                    <p class="font-medium text-sm text-ink-black">{{ department.manager.get_full_name|default:department.manager.username }}</p>
+                                    <p class="text-xs text-dark-cyan/70">Manager</p>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="flex items-center text-dark-cyan/70">
+                                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-white font-bold text-sm mr-3">
+                                    <i class="fas fa-user-slash text-xs"></i>
+                                </div>
+                                <span class="text-sm">Not assigned</span>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td class="py-4 px-6">
+                            <div class="flex items-center">
+                                <span class="text-lg font-bold text-ink-black mr-2">{{ department.employee_count }}</span>
+                                <span class="text-sm text-dark-cyan/70">employees</span>
+                            </div>
+                        </td>
+                        <td class="py-4 px-6">
+                            <div class="flex items-center">
+                                <span class="text-lg font-bold text-ink-black mr-2">{{ department.active_project_count }}</span>
+                                <span class="text-sm text-dark-cyan/70">projects</span>
+                            </div>
+                        </td>
+                        <td class="py-4 px-6">
+                            {% if department.status == 'active' %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-600">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5"></span>
+                                    Active
+                                </span>
+                            {% elif department.status == 'inactive' %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-600">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-red-500 mr-1.5"></span>
+                                    Inactive
+                                </span>
+                            {% elif department.status == 'archived' %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-500/10 text-gray-600">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-gray-500 mr-1.5"></span>
+                                    Archived
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-500/10 text-yellow-600">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-yellow-500 mr-1.5"></span>
+                                    {{ department.status|title }}
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="py-4 px-6">
+                            <div class="flex space-x-2">
+                                <button onclick="openViewDepartmentModal({{ department.id }})" 
+                                        class="p-2 rounded-lg bg-gradient-to-br from-dark-teal/5 to-dark-cyan/5 text-dark-teal hover:from-dark-teal/10 hover:to-dark-cyan/10 transition-all">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button onclick="openEditDepartmentModal({{ department.id }})" 
+                                        class="p-2 rounded-lg bg-gradient-to-br from-golden-orange/5 to-burnt-caramel/5 text-golden-orange hover:from-golden-orange/10 hover:to-burnt-caramel/10 transition-all">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="py-12 text-center">
+                            <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-dark-teal/10 to-dark-cyan/10 flex items-center justify-center">
+                                <i class="fas fa-building text-dark-teal text-2xl"></i>
+                            </div>
+                            <h4 class="text-lg font-medium text-ink-black mb-2">No Departments Found</h4>
+                            <p class="text-dark-cyan/70 mb-4">Create your first department to get started</p>
+                            <button onclick="openModal('createDepartmentModal')" class="btn-primary text-white px-4 py-2 rounded-lg">
+                                <i class="fas fa-plus mr-2"></i>
+                                Create Department
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_modals %}
+<!-- Enhanced Create Department Modal -->
+<div id="createDepartmentModal" class="fixed inset-0 bg-ink-black/70 overflow-y-auto h-full w-full hidden modal z-50 modal-overlay">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-lg shadow-2xl rounded-xl bg-white">
+        <div class="relative">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-vanilla-custard/30">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-dark-teal/10 to-dark-cyan/10 flex items-center justify-center mr-3">
+                        <i class="fas fa-building text-dark-teal text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-ink-black">Create Department</h3>
+                        <p class="text-sm text-dark-cyan/70">Add new organizational unit</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('createDepartmentModal')" 
+                        class="text-dark-cyan/70 hover:text-oxidized-iron transition-colors p-2 rounded-full hover:bg-gray-100">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <!-- Form -->
+            <form id="createDepartmentForm" class="space-y-5">
+                {% csrf_token %}
+                
+                <!-- Department Name -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-font mr-2 text-dark-cyan"></i>
+                        Department Name
+                    </label>
+                    <input type="text" name="name" 
+                           class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                           placeholder="Enter department name" required>
+                </div>
+                
+                <!-- Description -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-align-left mr-2 text-dark-cyan"></i>
+                        Description
+                    </label>
+                    <textarea name="description" 
+                              class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                              rows="3" placeholder="Describe the department's purpose"></textarea>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <!-- Manager -->
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-user-tie mr-2 text-dark-cyan"></i>
+                            Department Manager
+                        </label>
+                        <select name="manager" 
+                                class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent">
+                            <option value="">Select a manager</option>
+                            {% for manager in managers %}
+                            <option value="{{ manager.id }}">{{ manager.get_full_name|default:manager.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Status -->
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-power-off mr-2 text-dark-cyan"></i>
+                            Status
+                        </label>
+                        <select name="status" 
+                                class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                            <option value="active" class="text-green-600">Active</option>
+                            <option value="inactive" class="text-yellow-600">Inactive</option>
+                            <option value="archived" class="text-gray-600">Archived</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Color Picker -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-palette mr-2 text-dark-cyan"></i>
+                        Department Color
+                    </label>
+                    <div class="flex space-x-2">
+                        <div class="w-8 h-8 rounded-full bg-dark-teal cursor-pointer border-2 border-white shadow" 
+                             onclick="selectDepartmentColor('dark-teal', this)"></div>
+                        <div class="w-8 h-8 rounded-full bg-dark-cyan cursor-pointer border-2 border-white shadow"
+                             onclick="selectDepartmentColor('dark-cyan', this)"></div>
+                        <div class="w-8 h-8 rounded-full bg-golden-orange cursor-pointer border-2 border-white shadow"
+                             onclick="selectDepartmentColor('golden-orange', this)"></div>
+                        <div class="w-8 h-8 rounded-full bg-pearl-aqua cursor-pointer border-2 border-white shadow"
+                             onclick="selectDepartmentColor('pearl-aqua', this)"></div>
+                        <div class="w-8 h-8 rounded-full bg-rusty-spice cursor-pointer border-2 border-white shadow"
+                             onclick="selectDepartmentColor('rusty-spice', this)"></div>
+                    </div>
+                    <input type="hidden" name="color" id="departmentColor" value="dark-teal">
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex justify-end space-x-3 pt-6 border-t border-vanilla-custard/30">
+                    <button type="button" onclick="closeModal('createDepartmentModal')" 
+                            class="px-5 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-medium">
+                        Cancel
+                    </button>
+                    <button type="button" onclick="createDepartment()" 
+                            class="px-5 py-3 btn-primary text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all">
+                        <i class="fas fa-plus mr-2"></i>
+                        Create Department
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Enhanced View Department Modal -->
+<div id="viewDepartmentModal" class="fixed inset-0 bg-ink-black/70 overflow-y-auto h-full w-full hidden modal z-50 modal-overlay">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-2xl shadow-2xl rounded-xl bg-white">
+        <div class="relative">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-vanilla-custard/30">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-dark-teal/10 to-dark-cyan/10 flex items-center justify-center mr-3">
+                        <i class="fas fa-building text-dark-teal text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-ink-black" id="viewDeptName">Department Details</h3>
+                        <p class="text-sm text-dark-cyan/70">Complete department information</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('viewDepartmentModal')" 
+                        class="text-dark-cyan/70 hover:text-oxidized-iron transition-colors p-2 rounded-full hover:bg-gray-100">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <!-- Content -->
+            <div class="space-y-6" id="viewDeptContent">
+                <div class="text-center py-12">
+                    <div class="loading-spinner mx-auto mb-4"></div>
+                    <p class="text-dark-cyan/70">Loading department details...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Enhanced Edit Department Modal -->
+<div id="editDepartmentModal" class="fixed inset-0 bg-ink-black/70 overflow-y-auto h-full w-full hidden modal z-50 modal-overlay">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-lg shadow-2xl rounded-xl bg-white">
+        <div class="relative">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-vanilla-custard/30">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-dark-teal/10 to-dark-cyan/10 flex items-center justify-center mr-3">
+                        <i class="fas fa-edit text-golden-orange text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-ink-black">Edit Department</h3>
+                        <p class="text-sm text-dark-cyan/70">Update department information</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('editDepartmentModal')" 
+                        class="text-dark-cyan/70 hover:text-oxidized-iron transition-colors p-2 rounded-full hover:bg-gray-100">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <!-- Form -->
+            <form id="editDepartmentForm" class="space-y-5">
+                {% csrf_token %}
+                <input type="hidden" id="edit_dept_id" name="id">
+                
+                <!-- Department Name -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-font mr-2 text-dark-cyan"></i>
+                        Department Name
+                    </label>
+                    <input type="text" id="edit_dept_name" name="name" 
+                           class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                           placeholder="Enter department name" required>
+                </div>
+                
+                <!-- Description -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-align-left mr-2 text-dark-cyan"></i>
+                        Description
+                    </label>
+                    <textarea id="edit_dept_description" name="description" 
+                              class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                              rows="3" placeholder="Enter department description"></textarea>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <!-- Manager -->
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-user-tie mr-2 text-dark-cyan"></i>
+                            Department Manager
+                        </label>
+                        <select id="edit_dept_manager" name="manager" 
+                                class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent">
+                            <option value="">Select a manager</option>
+                            {% for manager in managers %}
+                            <option value="{{ manager.id }}">{{ manager.get_full_name|default:manager.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Status -->
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-power-off mr-2 text-dark-cyan"></i>
+                            Status
+                        </label>
+                        <select id="edit_dept_status" name="status" 
+                                class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                            <option value="active" class="text-green-600">Active</option>
+                            <option value="inactive" class="text-yellow-600">Inactive</option>
+                            <option value="archived" class="text-gray-600">Archived</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex justify-end space-x-3 pt-6 border-t border-vanilla-custard/30">
+                    <button type="button" onclick="closeModal('editDepartmentModal')" 
+                            class="px-5 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-medium">
+                        Cancel
+                    </button>
+                    <button type="button" onclick="updateDepartment()" 
+                            class="px-5 py-3 btn-primary text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all">
+                        <i class="fas fa-save mr-2"></i>
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Department-specific API endpoints
+    const ADMIN_API_CREATE_DEPARTMENT = "{% url 'admins:api_create_department' %}";
+    const ADMIN_API_GET_DEPARTMENT_TEMPLATE = "{% url 'admins:api_get_department' 0 %}";
+    const ADMIN_API_UPDATE_DEPARTMENT_TEMPLATE = "{% url 'admins:api_update_department' 0 %}";
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize search functionality
+        const searchInput = document.getElementById('departmentSearch');
+        if (searchInput) {
+            searchInput.addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase();
+                const rows = document.querySelectorAll('#departmentsTableBody tr, .table-row-hover');
+                
+                rows.forEach(row => {
+                    const text = row.textContent.toLowerCase();
+                    row.style.display = text.includes(searchTerm) ? '' : 'none';
+                });
+            });
+        }
+        
+        // Initialize any other department-specific functionality
+    });
+    
+    // Modal functions specific to this page
+    function openCreateDepartmentModal() {
+        openModal('createDepartmentModal');
+        selectDepartmentColor('dark-teal', document.querySelector('#createDepartmentModal .w-8.h-8.bg-dark-teal'));
+    }
+    
+    function openViewDepartmentModal(departmentId) {
+        openModal('viewDepartmentModal');
+        loadDepartmentDetails(departmentId);
+    }
+    
+    function openEditDepartmentModal(departmentId) {
+        openModal('editDepartmentModal');
+        loadDepartmentForEdit(departmentId);
+    }
+    
+    function selectDepartmentColor(color, element) {
+        const colorInput = document.getElementById('departmentColor');
+        if (colorInput) {
+            colorInput.value = color;
+        }
+        
+        // Update visual selection
+        const allColorButtons = document.querySelectorAll('#createDepartmentModal .w-8.h-8.rounded-full');
+        allColorButtons.forEach(btn => {
+            btn.classList.remove('border-4', 'ring-2', 'ring-offset-2');
+            btn.classList.add('border-2');
+        });
+        
+        if (element) {
+            element.classList.remove('border-2');
+            element.classList.add('border-4', 'ring-2', 'ring-offset-2');
+        }
+    }
+    
+    // Create department
+    async function createDepartment() {
+        const form = document.getElementById('createDepartmentForm');
+        if (!form) return;
+        
+        // Validate required fields
+        const nameInput = form.querySelector('[name="name"]');
+        if (!nameInput.value.trim()) {
+            showToast('Validation Error', 'Department name is required', 'error');
+            nameInput.focus();
+            return;
+        }
+        
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        try {
+            showToast('Processing', 'Creating department...', 'info');
+            
+            const response = await fetch(ADMIN_API_CREATE_DEPARTMENT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showToast('Success', result.message || 'Department created successfully!', 'success');
+                closeModal('createDepartmentModal');
+                form.reset();
+                
+                // Reload after 1.5 seconds
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('Error', result.error || 'Failed to create department', 'error');
+            }
+        } catch (error) {
+            console.error('Error creating department:', error);
+            showToast('Error', 'Network error occurred', 'error');
+        }
+    }
+    
+    // Load department details for viewing
+    async function loadDepartmentDetails(departmentId) {
+        try {
+            const url = ADMIN_API_GET_DEPARTMENT_TEMPLATE.replace('/0/', `/${departmentId}/`);
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Failed to fetch department details');
+            
+            const department = await response.json();
+            
+            // Create detailed HTML
+            const content = `
+                <div class="flex items-start mb-6">
+                    <div class="w-16 h-16 rounded-xl bg-gradient-to-br from-${department.color || 'dark-teal'}/10 to-${department.color || 'dark-cyan'}/10 flex items-center justify-center mr-4">
+                        <i class="fas fa-building text-${department.color || 'dark-teal'} text-2xl"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-xl font-bold text-ink-black mb-1">${department.name}</h4>
+                        <p class="text-dark-cyan/70">${department.description || 'No description provided'}</p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-gradient-to-br from-dark-teal/5 to-dark-cyan/5 p-5 rounded-xl">
+                        <h5 class="font-medium text-dark-teal mb-3 flex items-center">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Basic Information
+                        </h5>
+                        <div class="space-y-3">
+                            <div class="flex justify-between">
+                                <span class="text-dark-cyan/70">Status:</span>
+                                <span class="font-medium ${department.status === 'active' ? 'text-green-600' : department.status === 'inactive' ? 'text-yellow-600' : 'text-gray-600'}">
+                                    ${department.status.charAt(0).toUpperCase() + department.status.slice(1)}
+                                </span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-dark-cyan/70">Created:</span>
+                                <span class="font-medium">${new Date(department.created_at).toLocaleDateString()}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-dark-cyan/70">Last Updated:</span>
+                                <span class="font-medium">${new Date(department.updated_at).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gradient-to-br from-golden-orange/5 to-burnt-caramel/5 p-5 rounded-xl">
+                        <h5 class="font-medium text-dark-teal mb-3 flex items-center">
+                            <i class="fas fa-chart-bar mr-2"></i>
+                            Statistics
+                        </h5>
+                        <div class="space-y-3">
+                            <div class="flex justify-between">
+                                <span class="text-dark-cyan/70">Total Employees:</span>
+                                <span class="text-lg font-bold text-ink-black">${department.employee_count}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-dark-cyan/70">Active Projects:</span>
+                                <span class="text-lg font-bold text-ink-black">${department.active_project_count}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-dark-cyan/70">Department Manager:</span>
+                                <span class="font-medium">${department.manager ? department.manager.full_name || department.manager.username : 'Not assigned'}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-br from-pearl-aqua/5 to-dark-cyan/5 p-5 rounded-xl">
+                    <h5 class="font-medium text-dark-teal mb-3 flex items-center">
+                        <i class="fas fa-align-left mr-2"></i>
+                        Description
+                    </h5>
+                    <p class="text-dark-cyan/80">${department.description || 'No description available for this department.'}</p>
+                </div>
+                
+                <div class="flex justify-end space-x-3 pt-6 border-t border-vanilla-custard/30">
+                    <button type="button" onclick="openEditDepartmentModal(${department.id})" 
+                            class="px-5 py-3 bg-gradient-to-br from-golden-orange/10 to-burnt-caramel/10 text-golden-orange rounded-xl hover:from-golden-orange/20 hover:to-burnt-caramel/20 transition-all font-medium">
+                        <i class="fas fa-edit mr-2"></i>
+                        Edit Department
+                    </button>
+                    <button type="button" onclick="closeModal('viewDepartmentModal')" 
+                            class="px-5 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-medium">
+                        Close
+                    </button>
+                </div>
+            `;
+            
+            document.getElementById('viewDeptContent').innerHTML = content;
+            document.getElementById('viewDeptName').textContent = department.name;
+            
+        } catch (error) {
+            console.error('Error loading department details:', error);
+            document.getElementById('viewDeptContent').innerHTML = `
+                <div class="text-center py-12">
+                    <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-oxidized-iron/10 to-brown-red/10 flex items-center justify-center">
+                        <i class="fas fa-exclamation-triangle text-oxidized-iron text-2xl"></i>
+                    </div>
+                    <h4 class="text-lg font-medium text-ink-black mb-2">Unable to Load Data</h4>
+                    <p class="text-dark-cyan/70 mb-6">Failed to load department details. Please try again.</p>
+                    <button onclick="closeModal('viewDepartmentModal')" 
+                            class="px-5 py-3 bg-oxidized-iron text-white rounded-xl font-medium">
+                        Close
+                    </button>
+                </div>
+            `;
+        }
+    }
+    
+    // Load department for editing
+    async function loadDepartmentForEdit(departmentId) {
+        try {
+            const url = ADMIN_API_GET_DEPARTMENT_TEMPLATE.replace('/0/', `/${departmentId}/`);
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Failed to fetch department details');
+            
+            const department = await response.json();
+            
+            // Populate edit form
+            document.getElementById('edit_dept_id').value = department.id;
+            document.getElementById('edit_dept_name').value = department.name;
+            document.getElementById('edit_dept_description').value = department.description || '';
+            document.getElementById('edit_dept_manager').value = department.manager?.id || '';
+            document.getElementById('edit_dept_status').value = department.status || 'active';
+            
+        } catch (error) {
+            console.error('Error loading department for edit:', error);
+            showToast('Error', 'Failed to load department details', 'error');
+        }
+    }
+    
+    // Update department
+    async function updateDepartment() {
+        const form = document.getElementById('editDepartmentForm');
+        if (!form) return;
+        
+        // Validate required fields
+        const nameInput = form.querySelector('[name="name"]');
+        if (!nameInput.value.trim()) {
+            showToast('Validation Error', 'Department name is required', 'error');
+            nameInput.focus();
+            return;
+        }
+        
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        const departmentId = data.id;
+        
+        try {
+            showToast('Processing', 'Updating department...', 'info');
+            
+            const url = ADMIN_API_UPDATE_DEPARTMENT_TEMPLATE.replace('/0/', `/${departmentId}/`);
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showToast('Success', result.message || 'Department updated successfully!', 'success');
+                closeModal('editDepartmentModal');
+                
+                // Reload after 1.5 seconds
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('Error', result.error || 'Failed to update department', 'error');
+            }
+        } catch (error) {
+            console.error('Error updating department:', error);
+            showToast('Error', 'Network error occurred', 'error');
+        }
+    }
+</script>
+{% endblock %}

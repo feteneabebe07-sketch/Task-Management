@@ -1,0 +1,1020 @@
+<!-- templates/employee/time_tracking.html -->
+{% extends 'employee/base.html' %}
+
+{% block title %}ProjectFlow - Time Tracking{% endblock %}
+{% block page_title %}Time Tracking{% endblock %}
+
+{% block extra_css %}
+<style>
+    .timer-active {
+        animation: pulse 2s infinite;
+        background: linear-gradient(135deg, #005f73 0%, #0a9396 100%);
+    }
+    
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(10, 147, 150, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(10, 147, 150, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(10, 147, 150, 0); }
+    }
+    
+    .progress-ring {
+        transform: rotate(-90deg);
+    }
+    
+    .progress-ring__circle {
+        transition: stroke-dashoffset 0.35s;
+        transform: rotate(90deg);
+        transform-origin: 50% 50%;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 250px;
+        width: 100%;
+    }
+    
+    .time-log-entry {
+        transition: all 0.2s ease;
+    }
+    
+    .time-log-entry:hover {
+        transform: translateX(5px);
+        background: linear-gradient(90deg, rgba(233, 216, 166, 0.1) 0%, rgba(238, 155, 0, 0.05) 100%);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Left Column: Timer and Current Session -->
+    <div class="lg:col-span-2 space-y-6">
+        <!-- Active Timer Card -->
+        <div class="bg-white rounded-xl shadow-sm p-6 card-hover">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-ink-black">Active Timer</h3>
+                <div id="timerStatus" class="flex items-center">
+                    <span class="status-dot status-inactive mr-2"></span>
+                    <span class="text-sm text-gray-600">Not Running</span>
+                </div>
+            </div>
+            
+            <div id="timerContainer">
+                <!-- When timer is not running -->
+                <div id="noTimerView" class="text-center py-8">
+                    <div class="w-32 h-32 mx-auto mb-6 relative">
+                        <svg class="progress-ring w-32 h-32" viewBox="0 0 120 120">
+                            <circle class="stroke-current text-gray-200" stroke-width="8" fill="transparent" r="52" cx="60" cy="60"/>
+                            <circle id="progressCircle" class="progress-ring__circle stroke-current text-dark-teal" 
+                                    stroke-width="8" fill="transparent" r="52" cx="60" cy="60" 
+                                    stroke-dasharray="326.56" stroke-dashoffset="326.56"/>
+                        </svg>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <span id="timerDisplay" class="text-3xl font-bold text-ink-black">00:00:00</span>
+                        </div>
+                    </div>
+                    
+                    <p class="text-gray-600 mb-6">Select a task and start tracking your time</p>
+                    
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">What are you working on?</label>
+                        <textarea id="timerDescription" class="w-full p-3 border border-gray-300 rounded-lg text-sm form-input" 
+                                  rows="2" placeholder="Describe what you're working on..."></textarea>
+                    </div>
+                    
+                    <button id="startTimerBtn" class="btn-primary px-6 py-3 rounded-lg flex items-center justify-center mx-auto">
+                        <i class="fas fa-play mr-2"></i>
+                        Start Timer
+                    </button>
+                </div>
+                
+                <!-- When timer is running -->
+                <div id="activeTimerView" class="hidden">
+                    <div class="flex flex-col md:flex-row items-center justify-between mb-6">
+                        <div>
+                            <h4 class="font-medium text-lg text-ink-black" id="activeTaskTitle">Loading...</h4>
+                            <p class="text-sm text-gray-600" id="activeTaskDetails">Project • Status</p>
+                        </div>
+                        <div class="text-center mt-4 md:mt-0">
+                            <div class="text-4xl font-bold text-dark-teal mb-2" id="activeTimerDisplay">00:00:00</div>
+                            <p class="text-sm text-gray-600">Time Elapsed</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-wrap gap-3">
+                        <button id="stopTimerBtn" class="px-4 py-2 bg-red-100 text-red-700 rounded-lg flex items-center hover:bg-red-200 transition-colors">
+                            <i class="fas fa-stop mr-2"></i>
+                            Stop & Save
+                        </button>
+                        <button id="pauseTimerBtn" class="px-4 py-2 bg-yellow-100 text-yellow-700 rounded-lg flex items-center hover:bg-yellow-200 transition-colors">
+                            <i class="fas fa-pause mr-2"></i>
+                            Pause
+                        </button>
+                        <button id="switchTaskBtn" class="px-4 py-2 border border-dark-teal text-dark-teal rounded-lg flex items-center hover:bg-dark-teal hover:text-white transition-colors">
+                            <i class="fas fa-exchange-alt mr-2"></i>
+                            Switch Task
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Today's Time Log -->
+        <div class="bg-white rounded-xl shadow-sm p-6 card-hover">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-ink-black">Today's Time Log</h3>
+                <div class="flex items-center space-x-3">
+                    <span class="text-sm text-gray-600">Total:</span>
+                    <span class="text-2xl font-bold text-dark-teal" id="todayTotal">{{ today_total_hours }}h</span>
+                    <button id="addManualEntryBtn" class="px-4 py-2 bg-dark-teal text-white rounded-lg text-sm hover:bg-dark-cyan transition-colors">
+                        <i class="fas fa-plus mr-2"></i>
+                        Add Entry
+                    </button>
+                </div>
+            </div>
+            
+            <div class="space-y-3" id="timeLogContainer">
+                {% for log in today_time_logs %}
+                <div class="time-log-entry flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
+                    <div class="flex-1">
+                        <div class="flex items-center mb-2">
+                            <div class="w-8 h-8 rounded-full bg-pearl-aqua flex items-center justify-center text-dark-teal font-bold mr-3">
+                                {{ log.task.project.name|first|upper }}
+                            </div>
+                            <div>
+                                <p class="font-medium text-ink-black">{{ log.task.title }}</p>
+                                <p class="text-sm text-gray-600">{{ log.task.project.name }}</p>
+                            </div>
+                        </div>
+                        {% if log.description %}
+                        <p class="text-sm text-gray-500 mt-2">{{ log.description|truncatechars:100 }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="text-right ml-4">
+                        <p class="font-bold text-dark-teal text-xl">{{ log.hours }}h</p>
+                        <p class="text-xs text-gray-600">{{ log.date|date:"M d, Y" }}</p>
+                        <button class="delete-log-btn mt-2 text-xs text-gray-400 hover:text-red-500 transition-colors" 
+                                data-log-id="{{ log.id }}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-8">
+                    <i class="fas fa-clock text-4xl text-gray-300 mb-4"></i>
+                    <p class="text-gray-500">No time logs for today yet.</p>
+                    <p class="text-sm text-gray-400 mt-2">Start a timer or add a manual entry</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Weekly Overview Chart -->
+        <div class="bg-white rounded-xl shadow-sm p-6 card-hover">
+            <h3 class="text-xl font-bold text-ink-black mb-6">Weekly Overview</h3>
+            <div class="chart-container">
+                <canvas id="weeklyChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right Column: Task Selection and Stats -->
+    <div class="space-y-6">
+        <!-- Quick Task Selection -->
+        <div class="bg-white rounded-xl shadow-sm p-6 card-hover">
+            <h3 class="text-xl font-bold text-ink-black mb-4">Track Time on Task</h3>
+            
+            <div class="space-y-3" id="taskSelectionContainer">
+                {% for task in available_tasks %}
+                <div class="task-select-card flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                     data-task-id="{{ task.id }}"
+                     data-task-title="{{ task.title }}"
+                     data-project="{{ task.project.name }}"
+                     data-priority="{{ task.priority }}"
+                     data-estimated="{{ task.estimated_hours|default:0 }}"
+                     data-actual="{{ task.actual_hours|default:0 }}">
+                    <div class="flex-1">
+                        <div class="flex items-center mb-1">
+                            <span class="priority-{{ task.priority }} text-xs px-2 py-1 rounded-full mr-2">
+                                {{ task.get_priority_display }}
+                            </span>
+                            <span class="text-xs text-gray-500">{{ task.task_type|title }}</span>
+                        </div>
+                        <p class="font-medium text-ink-black truncate">{{ task.title }}</p>
+                        <p class="text-sm text-gray-600">{{ task.project.name }}</p>
+                    </div>
+                    <div class="text-right ml-3">
+                        <div class="text-sm font-medium text-dark-teal">
+                            {{ task.actual_hours|default:"0" }}/{{ task.estimated_hours|default:"?" }}h
+                        </div>
+                        <div class="w-16 h-2 bg-gray-200 rounded-full overflow-hidden mt-1">
+                            <div class="h-full bg-dark-teal" 
+                                 style="width: {% widthratio task.actual_hours|default:0 task.estimated_hours|default:1 100 %}%"></div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-4">
+                    <i class="fas fa-tasks text-3xl text-gray-300 mb-2"></i>
+                    <p class="text-gray-500">No tasks available for time tracking.</p>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="mt-6 pt-4 border-t border-gray-200">
+                <a href="{% url 'employee:my_tasks' %}" class="text-dark-teal hover:text-dark-cyan flex items-center justify-center">
+                    <i class="fas fa-external-link-alt mr-2"></i>
+                    View All Tasks
+                </a>
+            </div>
+        </div>
+        
+        <!-- Time Statistics -->
+        <div class="bg-white rounded-xl shadow-sm p-6 card-hover">
+            <h3 class="text-xl font-bold text-ink-black mb-6">Time Statistics</h3>
+            
+            <div class="space-y-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-sm text-gray-600">Today</p>
+                        <p class="text-2xl font-bold text-ink-black">{{ today_total_hours }}h</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm text-gray-600">This Week</p>
+                        <p id="weekTotal" class="text-2xl font-bold text-dark-teal">0h</p>
+                    </div>
+                </div>
+                
+                <div class="pt-4 border-t border-gray-200">
+                    <p class="text-sm text-gray-600 mb-3">Project Distribution</p>
+                    <div id="projectDistribution" class="space-y-2">
+                        <!-- Will be populated by JavaScript -->
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-700">Loading...</span>
+                            <span class="text-sm font-medium text-dark-teal">0h</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="pt-4 border-t border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm text-gray-600">Daily Average</p>
+                            <p id="dailyAverage" class="text-xl font-bold text-golden-orange">0h</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm text-gray-600">Total Logged</p>
+                            <p id="totalLogged" class="text-xl font-bold text-rusty-spice">0h</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Timer Tips -->
+        <div class="bg-gradient-to-br from-vanilla-custard to-pearl-aqua rounded-xl shadow-sm p-6">
+            <h3 class="text-xl font-bold text-ink-black mb-4">Timer Tips</h3>
+            <ul class="space-y-3">
+                <li class="flex items-start">
+                    <i class="fas fa-lightbulb text-golden-orange mt-1 mr-3"></i>
+                    <span class="text-sm text-ink-black">Start timer when you begin working on a task</span>
+                </li>
+                <li class="flex items-start">
+                    <i class="fas fa-lightbulb text-golden-orange mt-1 mr-3"></i>
+                    <span class="text-sm text-ink-black">Stop timer when switching tasks or taking breaks</span>
+                </li>
+                <li class="flex items-start">
+                    <i class="fas fa-lightbulb text-golden-orange mt-1 mr-3"></i>
+                    <span class="text-sm text-ink-black">Add descriptions for better time analysis</span>
+                </li>
+                <li class="flex items-start">
+                    <i class="fas fa-lightbulb text-golden-orange mt-1 mr-3"></i>
+                    <span class="text-sm text-ink-black">Use manual entry for offline work or corrections</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block modal %}
+<!-- Manual Entry Modal -->
+<div id="manualEntryModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 modal">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-md mx-4 p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-semibold text-ink-black">Add Time Entry</h3>
+            <button class="text-gray-500 hover:text-gray-700 close-modal">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <form id="manualEntryForm" method="POST">
+            {% csrf_token %}
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Task</label>
+                    <select name="task" class="w-full p-3 border border-gray-300 rounded-lg form-select" id="entryTask" required>
+                        <option value="">Select Task</option>
+                        {% for task in available_tasks %}
+                        <option value="{{ task.id }}">{{ task.title }} - {{ task.project.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                        <input type="date" name="date" class="w-full p-3 border border-gray-300 rounded-lg form-input" 
+                               value="{% now 'Y-m-d' %}" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Hours</label>
+                        <input type="number" name="hours" step="0.25" min="0.25" max="24" 
+                               class="w-full p-3 border border-gray-300 rounded-lg form-input" placeholder="1.5" required>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea name="description" class="w-full p-3 border border-gray-300 rounded-lg form-input" 
+                              rows="3" placeholder="What did you work on?" required></textarea>
+                </div>
+            </div>
+            
+            <div class="mt-6 flex justify-end space-x-3">
+                <button type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 close-modal hover:bg-gray-50 transition-colors">
+                    Cancel
+                </button>
+                <button type="submit" class="px-4 py-2 bg-dark-teal text-white rounded-lg hover:bg-dark-cyan transition-colors">
+                    Save Entry
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Task Switch Modal -->
+<div id="switchTaskModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 modal">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-md mx-4 p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-semibold text-ink-black">Switch Task</h3>
+            <button class="text-gray-500 hover:text-gray-700 close-modal">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <div class="space-y-3 max-h-96 overflow-y-auto pr-2" id="switchTaskContainer">
+            {% for task in available_tasks %}
+            <div class="switch-task-option flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors" 
+                 data-task-id="{{ task.id }}" 
+                 data-task-title="{{ task.title }}">
+                <div>
+                    <p class="font-medium">{{ task.title }}</p>
+                    <p class="text-sm text-gray-600">{{ task.project.name }} • {{ task.get_priority_display }} Priority</p>
+                </div>
+                <i class="fas fa-chevron-right text-gray-400"></i>
+            </div>
+            {% empty %}
+            <p class="text-gray-500 text-center py-4">No tasks available.</p>
+            {% endfor %}
+        </div>
+        
+        <div class="mt-6 flex justify-end">
+            <button class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 close-modal hover:bg-gray-50 transition-colors">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Timer Details Modal -->
+<div id="timerDetailsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 modal">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-md mx-4 p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-semibold text-ink-black">Timer Details</h3>
+            <button class="text-gray-500 hover:text-gray-700 close-modal">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <div id="timerDetailsContent">
+            <!-- Will be populated by JavaScript -->
+        </div>
+        
+        <div class="mt-6 flex justify-end">
+            <button class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 close-modal hover:bg-gray-50 transition-colors">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Global variables
+    let timerInterval;
+    let currentTaskId = null;
+    let currentTaskTitle = '';
+    let currentProject = '';
+    let timerRunning = false;
+    let totalSeconds = 0;
+    let weeklyChart = null;
+    
+    // DOM elements
+    const timerDisplay = document.getElementById('timerDisplay');
+    const activeTimerDisplay = document.getElementById('activeTimerDisplay');
+    const timerStatus = document.getElementById('timerStatus');
+    const noTimerView = document.getElementById('noTimerView');
+    const activeTimerView = document.getElementById('activeTimerView');
+    const startTimerBtn = document.getElementById('startTimerBtn');
+    const stopTimerBtn = document.getElementById('stopTimerBtn');
+    const pauseTimerBtn = document.getElementById('pauseTimerBtn');
+    const switchTaskBtn = document.getElementById('switchTaskBtn');
+    const timerDescription = document.getElementById('timerDescription');
+    
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Check for existing timer session
+        checkTimerStatus();
+        
+        // Initialize event listeners
+        initializeEventListeners();
+        
+        // Load time statistics
+        loadTimeStats();
+        
+        // Initialize weekly chart
+        initializeWeeklyChart();
+        
+        // Update timer display every second if timer is running
+        if (timerRunning) {
+            startTimerUpdate();
+        }
+    });
+    
+    function initializeEventListeners() {
+        // Start timer button
+        startTimerBtn.addEventListener('click', startTimer);
+        
+        // Stop timer button
+        stopTimerBtn.addEventListener('click', stopTimer);
+        
+        // Pause timer button
+        pauseTimerBtn.addEventListener('click', togglePauseTimer);
+        
+        // Switch task button
+        switchTaskBtn.addEventListener('click', openSwitchTaskModal);
+        
+        // Task selection
+        document.querySelectorAll('.task-select-card').forEach(card => {
+            card.addEventListener('click', function() {
+                selectTask(this);
+            });
+        });
+        
+        // Manual entry button
+        document.getElementById('addManualEntryBtn').addEventListener('click', function() {
+            document.getElementById('manualEntryModal').classList.remove('hidden');
+        });
+        
+        // Close modal buttons
+        document.querySelectorAll('.close-modal').forEach(button => {
+            button.addEventListener('click', function() {
+                const modal = this.closest('.modal');
+                if (modal) modal.classList.add('hidden');
+            });
+        });
+        
+        // Manual entry form submission
+        document.getElementById('manualEntryForm').addEventListener('submit', submitManualEntry);
+        
+        // Delete log buttons
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.delete-log-btn')) {
+                const logId = e.target.closest('.delete-log-btn').dataset.logId;
+                deleteTimeLog(logId);
+            }
+        });
+        
+        // Switch task selection
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.switch-task-option')) {
+                const option = e.target.closest('.switch-task-option');
+                switchTask(option);
+            }
+        });
+        
+        // Close modals when clicking outside
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.classList.add('hidden');
+                }
+            });
+        });
+    }
+    
+    async function checkTimerStatus() {
+        try {
+            const response = await fetch('{% url "employee:get_timer_status" %}');
+            const data = await response.json();
+            
+            if (data.active) {
+                // Timer is running
+                timerRunning = true;
+                currentTaskId = data.task_id;
+                currentTaskTitle = data.task_title;
+                
+                // Calculate total seconds from elapsed time
+                totalSeconds = data.elapsed.hours * 3600 + 
+                              data.elapsed.minutes * 60 + 
+                              data.elapsed.seconds;
+                
+                // Update UI
+                updateTimerUI(data);
+                showNotification('Timer Resumed', `Timer for "${data.task_title}" was resumed`, 'info');
+            }
+        } catch (error) {
+            console.error('Error checking timer status:', error);
+        }
+    }
+    
+    function updateTimerUI(data) {
+        // Switch views
+        noTimerView.classList.add('hidden');
+        activeTimerView.classList.remove('hidden');
+        
+        // Update status
+        timerStatus.innerHTML = `
+            <span class="status-dot status-active mr-2"></span>
+            <span class="text-sm text-green-600">Running</span>
+        `;
+        
+        // Update task info
+        document.getElementById('activeTaskTitle').textContent = data.task_title;
+        
+        // Start updating timer display
+        startTimerUpdate();
+    }
+    
+    function startTimerUpdate() {
+        if (timerInterval) clearInterval(timerInterval);
+        
+        timerInterval = setInterval(() => {
+            totalSeconds++;
+            updateTimerDisplay();
+        }, 1000);
+    }
+    
+    function updateTimerDisplay() {
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        
+        const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        
+        timerDisplay.textContent = timeString;
+        if (activeTimerDisplay) {
+            activeTimerDisplay.textContent = timeString;
+        }
+        
+        // Update progress circle
+        const progressCircle = document.getElementById('progressCircle');
+        if (progressCircle) {
+            const circumference = 2 * Math.PI * 52;
+            const progress = (totalSeconds % 3600) / 3600; // Progress within current hour
+            const offset = circumference - (progress * circumference);
+            progressCircle.style.strokeDashoffset = offset;
+        }
+    }
+    
+    async function startTimer() {
+        if (!currentTaskId) {
+            showNotification('Select Task First', 'Please select a task before starting the timer.', 'warning');
+            return;
+        }
+        
+        try {
+            const formData = new FormData();
+            formData.append('task_id', currentTaskId);
+            formData.append('description', timerDescription.value || 'Working on task');
+            formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+            
+            const response = await fetch('{% url "employee:start_timer" %}', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Start timer locally
+                timerRunning = true;
+                totalSeconds = 0;
+                
+                // Update UI
+                updateTimerUI({
+                    task_title: data.task_title,
+                    task_id: data.task_id
+                });
+                
+                showNotification('Timer Started', `Tracking time for "${data.task_title}"`, 'success');
+            } else {
+                showNotification('Error', data.error || 'Failed to start timer', 'error');
+            }
+        } catch (error) {
+            console.error('Error starting timer:', error);
+            showNotification('Error', 'Failed to start timer', 'error');
+        }
+    }
+    
+    async function stopTimer() {
+        if (!timerRunning) return;
+        
+        try {
+            const response = await fetch('{% url "employee:stop_timer" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `csrfmiddlewaretoken={{ csrf_token }}`
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Stop timer locally
+                timerRunning = false;
+                clearInterval(timerInterval);
+                
+                // Reset UI
+                noTimerView.classList.remove('hidden');
+                activeTimerView.classList.add('hidden');
+                
+                timerStatus.innerHTML = `
+                    <span class="status-dot status-inactive mr-2"></span>
+                    <span class="text-sm text-gray-600">Not Running</span>
+                `;
+                
+                // Reset timer display
+                totalSeconds = 0;
+                updateTimerDisplay();
+                
+                // Update today's total
+                document.getElementById('todayTotal').textContent = data.today_total + 'h';
+                
+                // Add new time log entry
+                addTimeLogEntry({
+                    task_title: data.task_title,
+                    hours: data.hours,
+                    description: data.description,
+                    date: data.date
+                });
+                
+                showNotification('Time Logged', `Logged ${data.hours}h for "${data.task_title}"`, 'success');
+            } else {
+                showNotification('Error', data.error || 'Failed to stop timer', 'error');
+            }
+        } catch (error) {
+            console.error('Error stopping timer:', error);
+            showNotification('Error', 'Failed to stop timer', 'error');
+        }
+    }
+    
+    function togglePauseTimer() {
+        if (!timerRunning) return;
+        
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            pauseTimerBtn.innerHTML = '<i class="fas fa-play mr-2"></i>Resume';
+            timerStatus.innerHTML = `
+                <span class="status-dot status-pending mr-2"></span>
+                <span class="text-sm text-yellow-600">Paused</span>
+            `;
+            showNotification('Timer Paused', 'Time tracking paused', 'info');
+        } else {
+            startTimerUpdate();
+            pauseTimerBtn.innerHTML = '<i class="fas fa-pause mr-2"></i>Pause';
+            timerStatus.innerHTML = `
+                <span class="status-dot status-active mr-2"></span>
+                <span class="text-sm text-green-600">Running</span>
+            `;
+            showNotification('Timer Resumed', 'Time tracking resumed', 'info');
+        }
+    }
+    
+    function selectTask(card) {
+        // Remove previous selection
+        document.querySelectorAll('.task-select-card').forEach(c => {
+            c.classList.remove('border-dark-teal', 'bg-dark-teal/5');
+        });
+        
+        // Select new task
+        card.classList.add('border-dark-teal', 'bg-dark-teal/5');
+        
+        currentTaskId = card.dataset.taskId;
+        currentTaskTitle = card.dataset.taskTitle;
+        currentProject = card.dataset.project;
+        
+        // Update active task info
+        document.getElementById('activeTaskTitle').textContent = currentTaskTitle;
+        document.getElementById('activeTaskDetails').textContent = `${currentProject} • ${card.dataset.priority} Priority`;
+        
+        showNotification('Task Selected', `Ready to track time for "${currentTaskTitle}"`, 'info');
+    }
+    
+    function openSwitchTaskModal() {
+        document.getElementById('switchTaskModal').classList.remove('hidden');
+    }
+    
+    function switchTask(option) {
+        const taskId = option.dataset.taskId;
+        const taskTitle = option.dataset.taskTitle;
+        
+        if (timerRunning) {
+            // Stop current timer first
+            stopTimer().then(() => {
+                // Select new task
+                currentTaskId = taskId;
+                currentTaskTitle = taskTitle;
+                
+                // Start timer for new task
+                setTimeout(startTimer, 500);
+            });
+        } else {
+            // Just select the task
+            currentTaskId = taskId;
+            currentTaskTitle = taskTitle;
+            
+            // Find and highlight the task card
+            document.querySelectorAll('.task-select-card').forEach(card => {
+                if (card.dataset.taskId === taskId) {
+                    card.classList.add('border-dark-teal', 'bg-dark-teal/5');
+                } else {
+                    card.classList.remove('border-dark-teal', 'bg-dark-teal/5');
+                }
+            });
+        }
+        
+        document.getElementById('switchTaskModal').classList.add('hidden');
+        showNotification('Task Switched', `Now tracking time on "${taskTitle}"`, 'success');
+    }
+    
+    async function submitManualEntry(e) {
+        e.preventDefault();
+        
+        const form = e.target;
+        const formData = new FormData(form);
+        
+        try {
+            const response = await fetch('{% url "employee:log_time_manual" %}', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Close modal
+                document.getElementById('manualEntryModal').classList.add('hidden');
+                
+                // Reset form
+                form.reset();
+                
+                // Update today's total
+                document.getElementById('todayTotal').textContent = data.today_total + 'h';
+                
+                // Add new entry
+                addTimeLogEntry({
+                    task_title: data.task_title,
+                    project: data.project,
+                    hours: data.hours,
+                    description: data.description,
+                    date: data.date
+                });
+                
+                showNotification('Entry Added', `Added ${data.hours}h for "${data.task_title}"`, 'success');
+            } else {
+                showNotification('Error', data.error || 'Failed to save entry', 'error');
+            }
+        } catch (error) {
+            console.error('Error saving manual entry:', error);
+            showNotification('Error', 'Failed to save entry', 'error');
+        }
+    }
+    
+    function addTimeLogEntry(log) {
+        const container = document.getElementById('timeLogContainer');
+        
+        // Remove empty state if present
+        const emptyState = container.querySelector('.text-center');
+        if (emptyState) emptyState.remove();
+        
+        const logEntry = document.createElement('div');
+        logEntry.className = 'time-log-entry flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100';
+        logEntry.innerHTML = `
+            <div class="flex-1">
+                <div class="flex items-center mb-2">
+                    <div class="w-8 h-8 rounded-full bg-pearl-aqua flex items-center justify-center text-dark-teal font-bold mr-3">
+                        ${log.project ? log.project[0].toUpperCase() : 'T'}
+                    </div>
+                    <div>
+                        <p class="font-medium text-ink-black">${log.task_title}</p>
+                        <p class="text-sm text-gray-600">${log.project || 'General'}</p>
+                    </div>
+                </div>
+                ${log.description ? `<p class="text-sm text-gray-500 mt-2">${log.description}</p>` : ''}
+            </div>
+            <div class="text-right ml-4">
+                <p class="font-bold text-dark-teal text-xl">${log.hours}h</p>
+                <p class="text-xs text-gray-600">${log.date}</p>
+                <button class="delete-log-btn mt-2 text-xs text-gray-400 hover:text-red-500 transition-colors">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        
+        // Add event listener for delete button
+        logEntry.querySelector('.delete-log-btn').addEventListener('click', function() {
+            // We'll handle delete via the event delegation already set up
+            this.dataset.logId = log.time_log_id || Date.now();
+        });
+        
+        // Insert at the beginning
+        container.insertBefore(logEntry, container.firstChild);
+    }
+    
+    async function deleteTimeLog(logId) {
+        if (!confirm('Are you sure you want to delete this time log?')) return;
+        
+        try {
+            const response = await fetch(`{% url 'employee:delete_time_log' 0 %}`.replace('0', logId), {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Remove from UI
+                const logElement = document.querySelector(`[data-log-id="${logId}"]`).closest('.time-log-entry');
+                if (logElement) logElement.remove();
+                
+                // Update today's total
+                document.getElementById('todayTotal').textContent = data.today_total + 'h';
+                
+                showNotification('Deleted', 'Time log deleted successfully', 'success');
+            } else {
+                showNotification('Error', data.error || 'Failed to delete time log', 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting time log:', error);
+            showNotification('Error', 'Failed to delete time log', 'error');
+        }
+    }
+    
+    async function loadTimeStats() {
+        try {
+            const response = await fetch('{% url "employee:get_time_stats" %}');
+            const data = await response.json();
+            
+            if (data.success) {
+                // Update week total
+                const weekTotal = data.weekly_stats.reduce((sum, day) => sum + day.hours, 0);
+                document.getElementById('weekTotal').textContent = weekTotal.toFixed(1) + 'h';
+                
+                // Update daily average
+                document.getElementById('dailyAverage').textContent = data.daily_average + 'h';
+                
+                // Update total logged
+                document.getElementById('totalLogged').textContent = data.total_hours_logged.toFixed(1) + 'h';
+                
+                // Update project distribution
+                updateProjectDistribution(data.project_distribution);
+                
+                // Update weekly chart
+                updateWeeklyChart(data.weekly_stats);
+            }
+        } catch (error) {
+            console.error('Error loading time stats:', error);
+        }
+    }
+    
+    function updateProjectDistribution(projects) {
+        const container = document.getElementById('projectDistribution');
+        container.innerHTML = '';
+        
+        projects.slice(0, 5).forEach(project => {
+            const projectDiv = document.createElement('div');
+            projectDiv.className = 'flex items-center justify-between';
+            projectDiv.innerHTML = `
+                <div class="flex items-center">
+                    <div class="w-2 h-2 rounded-full bg-dark-teal mr-2"></div>
+                    <span class="text-sm text-gray-700 truncate max-w-[120px]">${project.task__project__name || 'Uncategorized'}</span>
+                </div>
+                <span class="text-sm font-medium text-dark-teal">${project.total_hours.toFixed(1)}h</span>
+            `;
+            container.appendChild(projectDiv);
+        });
+        
+        if (projects.length > 5) {
+            const moreDiv = document.createElement('div');
+            moreDiv.className = 'text-center pt-2';
+            moreDiv.innerHTML = `<span class="text-xs text-gray-500">+${projects.length - 5} more</span>`;
+            container.appendChild(moreDiv);
+        }
+    }
+    
+    function initializeWeeklyChart() {
+        const ctx = document.getElementById('weeklyChart').getContext('2d');
+        
+        weeklyChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Hours',
+                    data: [],
+                    backgroundColor: '#005f73',
+                    borderColor: '#0a9396',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    borderSkipped: false,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            display: true,
+                            color: 'rgba(0,0,0,0.05)'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return value + 'h';
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.parsed.y + ' hours';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function updateWeeklyChart(weeklyData) {
+        weeklyChart.data.labels = weeklyData.map(day => day.day);
+        weeklyChart.data.datasets[0].data = weeklyData.map(day => day.hours);
+        weeklyChart.update();
+    }
+    
+    function showNotification(title, message, type = 'info') {
+        // Use the showToast function from base.html
+        if (typeof showToast === 'function') {
+            showToast(title, message, type);
+        } else {
+            // Fallback notification
+            alert(`${title}: ${message}`);
+        }
+    }
+    
+    // Auto-save timer every 30 seconds
+    setInterval(() => {
+        if (timerRunning) {
+            // We could implement auto-save here if needed
+        }
+    }, 30000);
+    
+    // Handle page visibility change (tab switching)
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden && timerRunning) {
+            // Page is hidden, we could pause timer or show notification
+            console.log('Page hidden - timer is still running');
+        }
+    });
+</script>
+{% endblock %}

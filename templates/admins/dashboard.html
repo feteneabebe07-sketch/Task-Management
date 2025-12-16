@@ -1,0 +1,1510 @@
+{% extends 'admins/base.html' %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block page_title %}Admin Dashboard{% endblock %}
+{% block page_subtitle %}Welcome back, {{ user.first_name }}! Here's what's happening today.{% endblock %}
+
+{% block breadcrumbs %}
+<span class="text-dark-teal font-medium">Dashboard</span>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6 md:space-y-8">
+    <!-- Dashboard Stats Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        <!-- Total Projects Card -->
+        <div class="stat-card p-5 md:p-6 group cursor-pointer">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-dark-cyan/70 text-sm font-medium">Total Projects</p>
+                    <h3 class="text-2xl md:text-3xl font-bold text-ink-black mt-2">{{ total_projects }}</h3>
+                </div>
+                <div class="p-3 bg-gradient-to-br from-dark-teal/10 to-dark-cyan/10 rounded-xl group-hover:from-dark-teal/20 group-hover:to-dark-cyan/20 transition-all">
+                    <i class="fas fa-project-diagram text-dark-teal text-xl md:text-2xl"></i>
+                </div>
+            </div>
+            <div class="flex items-center text-sm">
+                <span class="text-dark-cyan font-medium flex items-center">
+                    <i class="fas fa-arrow-up mr-1 text-xs"></i>
+                    +{{ new_projects_this_month }} this month
+                </span>
+                <div class="ml-auto bg-dark-teal/10 text-dark-teal text-xs px-2 py-1 rounded-full">
+                    {{ active_projects|length }} active
+                </div>
+            </div>
+            
+        </div>
+        
+        <!-- Total Employees Card -->
+        <div class="stat-card p-5 md:p-6 group cursor-pointer">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-dark-cyan/70 text-sm font-medium">Total Employees</p>
+                    <h3 class="text-2xl md:text-3xl font-bold text-ink-black mt-2">{{ total_employees }}</h3>
+                </div>
+                <div class="p-3 bg-gradient-to-br from-golden-orange/10 to-burnt-caramel/10 rounded-xl group-hover:from-golden-orange/20 group-hover:to-burnt-caramel/20 transition-all">
+                    <i class="fas fa-users text-golden-orange text-xl md:text-2xl"></i>
+                </div>
+            </div>
+            <div class="flex items-center text-sm">
+                <span class="text-dark-cyan font-medium flex items-center">
+                    <i class="fas fa-arrow-up mr-1 text-xs"></i>
+                    +{{ new_employees_this_month }} this month
+                </span>
+                <div class="ml-auto bg-golden-orange/10 text-golden-orange text-xs px-2 py-1 rounded-full">
+                    {{ active_pms }} PMs
+                </div>
+            </div>
+            
+        </div>
+        
+        <!-- Active PMs Card -->
+        <div class="stat-card p-5 md:p-6 group cursor-pointer">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-dark-cyan/70 text-sm font-medium">Active PMs</p>
+                    <h3 class="text-2xl md:text-3xl font-bold text-ink-black mt-2">{{ active_pms }}</h3>
+                </div>
+                <div class="p-3 bg-gradient-to-br from-pearl-aqua/10 to-dark-cyan/10 rounded-xl group-hover:from-pearl-aqua/20 group-hover:to-dark-cyan/20 transition-all">
+                    <i class="fas fa-user-tie text-pearl-aqua text-xl md:text-2xl"></i>
+                </div>
+            </div>
+            <div class="flex items-center text-sm">
+                <span class="text-dark-cyan font-medium flex items-center">
+                    <i class="fas fa-check-circle mr-1 text-xs"></i>
+                    All assigned
+                </span>
+                <div class="ml-auto bg-pearl-aqua/10 text-pearl-aqua text-xs px-2 py-1 rounded-full">
+                    {{ active_pms }} working
+                </div>
+            </div>
+            
+        </div>
+        
+        <!-- Pending Tasks Card -->
+        <div class="stat-card p-5 md:p-6 group cursor-pointer">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-dark-cyan/70 text-sm font-medium">Pending Tasks</p>
+                    <h3 class="text-2xl md:text-3xl font-bold text-ink-black mt-2">{{ pending_tasks }}</h3>
+                </div>
+                <div class="p-3 bg-gradient-to-br from-rusty-spice/10 to-oxidized-iron/10 rounded-xl group-hover:from-rusty-spice/20 group-hover:to-oxidized-iron/20 transition-all">
+                    <i class="fas fa-tasks text-rusty-spice text-xl md:text-2xl"></i>
+                </div>
+            </div>
+            <div class="flex items-center text-sm">
+                <span class="text-oxidized-iron font-medium flex items-center">
+                    <i class="fas fa-exclamation-circle mr-1 text-xs"></i>
+                    {{ overdue_tasks }} overdue
+                </span>
+                <div class="ml-auto bg-rusty-spice/10 text-rusty-spice text-xs px-2 py-1 rounded-full">
+                    High priority
+                </div>
+            </div>
+           
+        </div>
+    </div>
+    
+    <!-- Main Content Area -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+        <!-- Project Progress Section -->
+        <div class="lg:col-span-2">
+            <div class="stat-card p-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+                    <div>
+                        <h3 class="text-lg md:text-xl font-bold text-ink-black mb-1">Project Progress</h3>
+                        <p class="text-dark-cyan/70 text-sm">Active projects and their current status</p>
+                    </div>
+                    <div class="flex items-center space-x-2 mt-4 md:mt-0">
+                        <a href="{% url 'admins:projects' %}" class="btn-secondary text-white px-4 py-2 rounded-lg text-sm font-medium">
+                            View All
+                            <i class="fas fa-arrow-right ml-2"></i>
+                        </a>
+                        <button onclick="openCreateProjectModal()" class="btn-primary text-white px-4 py-2 rounded-lg text-sm font-medium">
+                            <i class="fas fa-plus mr-2"></i>
+                            New
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="space-y-5">
+                    {% for project in active_projects %}
+                    <div class="group">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 rounded-full bg-{{ project.color_class }} mr-3"></div>
+                                <h4 class="font-medium text-ink-black truncate">{{ project.name }}</h4>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <span class="text-sm font-semibold text-{{ project.color_class }}">{{ project.progress }}%</span>
+                                <span class="text-xs text-dark-cyan bg-dark-cyan/10 px-2 py-1 rounded-full">{{ project.due_date|date:"d M" }}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="h-2 rounded-full progress-bar bg-gradient-to-r from-{{ project.color_class }} to-{{ project.color_class }}-600" 
+                                 style="width: {{ project.progress }}%"></div>
+                        </div>
+                        
+                        <div class="flex items-center justify-between mt-2 text-xs text-dark-cyan/70">
+                            <div class="flex items-center">
+                                <i class="fas fa-user-tie mr-1 text-{{ project.color_class }}"></i>
+                                <span>{{ project.project_manager.get_full_name|default:"Not Assigned" }}</span>
+                            </div>
+                            <div class="flex items-center space-x-4">
+                                <span class="flex items-center">
+                                    <i class="fas fa-flag mr-1"></i>
+                                    {{ project.priority|default:"Medium" }}
+                                </span>
+                                
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3 pt-3 border-t border-gray-100 hidden group-hover:block transition-all">
+                            <div class="flex items-center space-x-4">
+                                <button class="text-xs text-dark-teal hover:text-golden-orange transition-colors">
+                                    <i class="fas fa-chart-line mr-1"></i>
+                                    View Details
+                                </button>
+                                <button class="text-xs text-dark-teal hover:text-golden-orange transition-colors">
+                                    <i class="fas fa-tasks mr-1"></i>
+                                    Tasks
+                                </button>
+                                <button class="text-xs text-dark-teal hover:text-golden-orange transition-colors">
+                                    <i class="fas fa-users mr-1"></i>
+                                    Team
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-8">
+                        <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-pearl-aqua/20 flex items-center justify-center">
+                            <i class="fas fa-project-diagram text-pearl-aqua text-2xl"></i>
+                        </div>
+                        <h4 class="text-lg font-medium text-ink-black mb-2">No Active Projects</h4>
+                        <p class="text-dark-cyan/70 mb-4">Get started by creating your first project</p>
+                        <button onclick="openCreateProjectModal()" class="btn-primary text-white px-4 py-2 rounded-lg">
+                            <i class="fas fa-plus mr-2"></i>
+                            Create Project
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Actions Section -->
+        <div>
+            <div class="stat-card p-6 h-full">
+                <div class="mb-6">
+                    <h3 class="text-lg md:text-xl font-bold text-ink-black mb-1">Quick Actions</h3>
+                    <p class="text-dark-cyan/70 text-sm">Common administrative tasks</p>
+                </div>
+                
+                <div class="space-y-4">
+                    <!-- Create Department -->
+                    <button onclick="openCreateDepartmentModal()" 
+                            class="w-full flex items-center justify-between p-4 border border-vanilla-custard/30 rounded-xl hover:border-dark-teal/50 hover:bg-dark-teal/5 transition-all duration-300 group">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-gradient-to-br from-dark-teal/10 to-dark-cyan/10 rounded-lg mr-3 group-hover:from-dark-teal/20 group-hover:to-dark-cyan/20 transition-all">
+                                <i class="fas fa-building text-dark-teal text-lg group-hover:scale-110 transition-transform"></i>
+                            </div>
+                            <div class="text-left">
+                                <p class="font-medium text-ink-black group-hover:text-dark-teal">Create Department</p>
+                                <p class="text-xs text-dark-cyan/70 mt-1">Add new organizational unit</p>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-right text-dark-teal/40 group-hover:text-dark-teal group-hover:translate-x-1 transition-all"></i>
+                    </button>
+                    
+                    <!-- Register Employee -->
+                    <button onclick="openRegisterEmployeeModal()" 
+                            class="w-full flex items-center justify-between p-4 border border-vanilla-custard/30 rounded-xl hover:border-golden-orange/50 hover:bg-golden-orange/5 transition-all duration-300 group">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-gradient-to-br from-golden-orange/10 to-burnt-caramel/10 rounded-lg mr-3 group-hover:from-golden-orange/20 group-hover:to-burnt-caramel/20 transition-all">
+                                <i class="fas fa-user-plus text-golden-orange text-lg group-hover:scale-110 transition-transform"></i>
+                            </div>
+                            <div class="text-left">
+                                <p class="font-medium text-ink-black group-hover:text-golden-orange">Register Employee</p>
+                                <p class="text-xs text-dark-cyan/70 mt-1">Add new team member</p>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-right text-golden-orange/40 group-hover:text-golden-orange group-hover:translate-x-1 transition-all"></i>
+                    </button>
+                    
+                    <!-- Create Project -->
+                    <button onclick="openCreateProjectModal()" 
+                            class="w-full flex items-center justify-between p-4 border border-vanilla-custard/30 rounded-xl hover:border-pearl-aqua/50 hover:bg-pearl-aqua/5 transition-all duration-300 group">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-gradient-to-br from-pearl-aqua/10 to-dark-cyan/10 rounded-lg mr-3 group-hover:from-pearl-aqua/20 group-hover:to-dark-cyan/20 transition-all">
+                                <i class="fas fa-project-diagram text-pearl-aqua text-lg group-hover:scale-110 transition-transform"></i>
+                            </div>
+                            <div class="text-left">
+                                <p class="font-medium text-ink-black group-hover:text-pearl-aqua">Create Project</p>
+                                <p class="text-xs text-dark-cyan/70 mt-1">Start new initiative</p>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-right text-pearl-aqua/40 group-hover:text-pearl-aqua group-hover:translate-x-1 transition-all"></i>
+                    </button>
+                    
+                    <!-- Assign Project Manager -->
+                    <button onclick="openAssignPMModal()" 
+                            class="w-full flex items-center justify-between p-4 border border-vanilla-custard/30 rounded-xl hover:border-rusty-spice/50 hover:bg-rusty-spice/5 transition-all duration-300 group">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-gradient-to-br from-rusty-spice/10 to-oxidized-iron/10 rounded-lg mr-3 group-hover:from-rusty-spice/20 group-hover:to-oxidized-iron/20 transition-all">
+                                <i class="fas fa-user-tie text-rusty-spice text-lg group-hover:scale-110 transition-transform"></i>
+                            </div>
+                            <div class="text-left">
+                                <p class="font-medium text-ink-black group-hover:text-rusty-spice">Assign PM</p>
+                                <p class="text-xs text-dark-cyan/70 mt-1">Assign project leadership</p>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-right text-rusty-spice/40 group-hover:text-rusty-spice group-hover:translate-x-1 transition-all"></i>
+                    </button>
+                    <!-- Export Reports -->
+<button onclick="openExportReportsModal()" 
+        class="w-full flex items-center justify-between p-4 border border-vanilla-custard/30 rounded-xl hover:border-dark-cyan/50 hover:bg-dark-cyan/5 transition-all duration-300 group">
+    <div class="flex items-center">
+        <div class="p-3 bg-gradient-to-br from-dark-cyan/10 to-pearl-aqua/10 rounded-lg mr-3 group-hover:from-dark-cyan/20 group-hover:to-pearl-aqua/20 transition-all">
+            <i class="fas fa-file-export text-dark-cyan text-lg group-hover:scale-110 transition-transform"></i>
+        </div>
+        <div class="text-left">
+            <p class="font-medium text-ink-black group-hover:text-dark-cyan">Export Reports</p>
+            <p class="text-xs text-dark-cyan/70 mt-1">Download system data</p>
+        </div>
+    </div>
+    <i class="fas fa-chevron-right text-dark-cyan/40 group-hover:text-dark-cyan group-hover:translate-x-1 transition-all"></i>
+</button>
+                    
+                </div>
+                
+           
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Activity Section -->
+    <div class="stat-card p-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+            <div>
+                <h3 class="text-lg md:text-xl font-bold text-ink-black mb-1">Recent Activity</h3>
+                <p class="text-dark-cyan/70 text-sm">Latest actions across the system</p>
+            </div>
+            <a href="{% url 'admins:activity_log' %}" class="text-dark-teal hover:text-golden-orange font-medium text-sm mt-4 md:mt-0">
+                View All Activity
+                <i class="fas fa-arrow-right ml-2"></i>
+            </a>
+        </div>
+        
+        <div class="overflow-x-auto rounded-xl border border-vanilla-custard/30">
+            <table class="w-full">
+                <thead>
+                    <tr class="bg-gradient-to-r from-dark-teal/5 to-dark-cyan/5">
+                        <th class="text-left py-4 px-6 text-sm font-medium text-dark-teal">Action</th>
+                        <th class="text-left py-4 px-6 text-sm font-medium text-dark-teal">User</th>
+                        <th class="text-left py-4 px-6 text-sm font-medium text-dark-teal">Project</th>
+                        <th class="text-left py-4 px-6 text-sm font-medium text-dark-teal">Time</th>
+                        <th class="text-left py-4 px-6 text-sm font-medium text-dark-teal">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for activity in recent_activities %}
+                    <tr class="table-row-hover">
+                        <td class="py-4 px-6">
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center mr-3 bg-gradient-to-br from-{{ activity.color_class }}/10 to-{{ activity.color_class }}/20">
+                                    <i class="fas fa-{{ activity.icon|default:'bell' }} text-{{ activity.color_class }} text-sm"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-ink-black text-sm">{{ activity.action }}</p>
+                                    <p class="text-xs text-dark-cyan/70 mt-1">{{ activity.details|default:"" }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-4 px-6">
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-dark-teal to-dark-cyan flex items-center justify-center text-white text-sm font-bold mr-3">
+                                    {{ activity.user.first_name|first|upper }}{{ activity.user.last_name|first|upper }}
+                                </div>
+                                <div>
+                                    <p class="font-medium text-ink-black text-sm">{{ activity.user.get_full_name }}</p>
+                                    <p class="text-xs text-dark-cyan/70 mt-1">{{ activity.user_role|default:"User" }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-4 px-6">
+                            {% if activity.project %}
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 rounded-full bg-{{ activity.color_class }} mr-2"></div>
+                                <span class="text-sm text-ink-black truncate max-w-[150px]">{{ activity.project }}</span>
+                            </div>
+                            {% else %}
+                            <span class="text-sm text-dark-cyan/70">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-4 px-6">
+                            <div class="flex items-center text-sm text-dark-cyan">
+                                <i class="far fa-clock mr-2 text-xs"></i>
+                                {{ activity.created_at|timesince }} ago
+                            </div>
+                        </td>
+                        <td class="py-4 px-6">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-{{ activity.color_class }}/10 text-{{ activity.color_class }}">
+                                <span class="w-1.5 h-1.5 rounded-full bg-{{ activity.color_class }} mr-1.5"></span>
+                                {{ activity.status|default:"Completed" }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="py-12 text-center">
+                            <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-vanilla-custard/20 flex items-center justify-center">
+                                <i class="fas fa-history text-vanilla-custard text-2xl"></i>
+                            </div>
+                            <h4 class="text-lg font-medium text-ink-black mb-2">No Recent Activity</h4>
+                            <p class="text-dark-cyan/70">System activity will appear here</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_modals %}
+<!-- Enhanced Export Reports Modal -->
+<div id="exportReportsModal" class="fixed inset-0 bg-ink-black/70 overflow-y-auto h-full w-full hidden modal z-50 modal-overlay">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-lg shadow-2xl rounded-xl bg-white">
+        <div class="relative">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-vanilla-custard/30">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-dark-cyan/10 to-pearl-aqua/10 flex items-center justify-center mr-3">
+                        <i class="fas fa-file-export text-dark-cyan text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-ink-black">Export Reports</h3>
+                        <p class="text-sm text-dark-cyan/70">Download system data in CSV format</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('exportReportsModal')" 
+                        class="text-dark-cyan/70 hover:text-oxidized-iron transition-colors p-2 rounded-full hover:bg-gray-100">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <!-- Export Options -->
+            <div class="space-y-4">
+                <!-- Projects Export -->
+                <a href="{% url 'admins:export_projects' %}" 
+                   class="w-full flex items-center justify-between p-4 border border-vanilla-custard/30 rounded-xl hover:border-dark-teal/50 hover:bg-dark-teal/5 transition-all duration-300 group">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-gradient-to-br from-dark-teal/10 to-dark-cyan/10 rounded-lg mr-3 group-hover:from-dark-teal/20 group-hover:to-dark-cyan/20 transition-all">
+                            <i class="fas fa-project-diagram text-dark-teal text-lg"></i>
+                        </div>
+                        <div class="text-left">
+                            <p class="font-medium text-ink-black">Projects Report</p>
+                            <p class="text-xs text-dark-cyan/70 mt-1">Export all projects data</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-download text-dark-teal/60 group-hover:text-dark-teal"></i>
+                </a>
+                
+                <!-- Employees Export -->
+                <a href="{% url 'admins:export_employees' %}" 
+                   class="w-full flex items-center justify-between p-4 border border-vanilla-custard/30 rounded-xl hover:border-golden-orange/50 hover:bg-golden-orange/5 transition-all duration-300 group">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-gradient-to-br from-golden-orange/10 to-burnt-caramel/10 rounded-lg mr-3 group-hover:from-golden-orange/20 group-hover:to-burnt-caramel/20 transition-all">
+                            <i class="fas fa-users text-golden-orange text-lg"></i>
+                        </div>
+                        <div class="text-left">
+                            <p class="font-medium text-ink-black">Employees Report</p>
+                            <p class="text-xs text-dark-cyan/70 mt-1">Export all employees data</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-download text-golden-orange/60 group-hover:text-golden-orange"></i>
+                </a>
+                
+                <!-- Tasks Export -->
+                <a href="{% url 'admins:export_tasks' %}" 
+                   class="w-full flex items-center justify-between p-4 border border-vanilla-custard/30 rounded-xl hover:border-pearl-aqua/50 hover:bg-pearl-aqua/5 transition-all duration-300 group">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-gradient-to-br from-pearl-aqua/10 to-dark-cyan/10 rounded-lg mr-3 group-hover:from-pearl-aqua/20 group-hover:to-dark-cyan/20 transition-all">
+                            <i class="fas fa-tasks text-pearl-aqua text-lg"></i>
+                        </div>
+                        <div class="text-left">
+                            <p class="font-medium text-ink-black">Tasks Report</p>
+                            <p class="text-xs text-dark-cyan/70 mt-1">Export all tasks data</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-download text-pearl-aqua/60 group-hover:text-pearl-aqua"></i>
+                </a>
+                
+                <!-- Departments Export -->
+                <a href="{% url 'admins:export_departments' %}" 
+                   class="w-full flex items-center justify-between p-4 border border-vanilla-custard/30 rounded-xl hover:border-rusty-spice/50 hover:bg-rusty-spice/5 transition-all duration-300 group">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-gradient-to-br from-rusty-spice/10 to-oxidized-iron/10 rounded-lg mr-3 group-hover:from-rusty-spice/20 group-hover:to-oxidized-iron/20 transition-all">
+                            <i class="fas fa-building text-rusty-spice text-lg"></i>
+                        </div>
+                        <div class="text-left">
+                            <p class="font-medium text-ink-black">Departments Report</p>
+                            <p class="text-xs text-dark-cyan/70 mt-1">Export all departments data</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-download text-rusty-spice/60 group-hover:text-rusty-spice"></i>
+                </a>
+                
+                <!-- Activity Export -->
+                <a href="{% url 'admins:export_activity' %}" 
+                   class="w-full flex items-center justify-between p-4 border border-vanilla-custard/30 rounded-xl hover:border-dark-cyan/50 hover:bg-dark-cyan/5 transition-all duration-300 group">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-gradient-to-br from-dark-cyan/10 to-dark-teal/10 rounded-lg mr-3 group-hover:from-dark-cyan/20 group-hover:to-dark-teal/20 transition-all">
+                            <i class="fas fa-history text-dark-cyan text-lg"></i>
+                        </div>
+                        <div class="text-left">
+                            <p class="font-medium text-ink-black">Activity Log</p>
+                            <p class="text-xs text-dark-cyan/70 mt-1">Export recent activities</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-download text-dark-cyan/60 group-hover:text-dark-cyan"></i>
+                </a>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="flex justify-end space-x-3 pt-6 border-t border-vanilla-custard/30">
+                <button onclick="closeModal('exportReportsModal')" 
+                        class="px-5 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-medium">
+                    Close
+                </button>
+                <button onclick="exportAllReports()" 
+                        class="px-5 py-3 btn-primary text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all">
+                    <i class="fas fa-download mr-2"></i>
+                    Download All
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Enhanced Create Department Modal -->
+<div id="createDepartmentModal" class="fixed inset-0 bg-ink-black/70 overflow-y-auto h-full w-full hidden modal z-50 modal-overlay">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-lg shadow-2xl rounded-xl bg-white">
+        <div class="relative">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-vanilla-custard/30">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-dark-teal/10 to-dark-cyan/10 flex items-center justify-center mr-3">
+                        <i class="fas fa-building text-dark-teal text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-ink-black">Create Department</h3>
+                        <p class="text-sm text-dark-cyan/70">Add new organizational unit</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('createDepartmentModal')" 
+                        class="text-dark-cyan/70 hover:text-oxidized-iron transition-colors p-2 rounded-full hover:bg-gray-100">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <!-- Form -->
+            <form id="createDepartmentForm" class="space-y-5">
+                {% csrf_token %}
+                
+                <!-- Department Name -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-font mr-2 text-dark-cyan"></i>
+                        Department Name
+                    </label>
+                    <input type="text" name="name" 
+                           class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                           placeholder="Enter department name" required>
+                </div>
+                
+                <!-- Description -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-align-left mr-2 text-dark-cyan"></i>
+                        Description
+                    </label>
+                    <textarea name="description" 
+                              class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                              rows="3" placeholder="Describe the department's purpose"></textarea>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <!-- Manager -->
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-user-tie mr-2 text-dark-cyan"></i>
+                            Department Manager
+                        </label>
+                        <select name="manager" 
+                                class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent">
+                            <option value="">Select a manager</option>
+                            {% for manager in managers %}
+                            <option value="{{ manager.id }}">{{ manager.get_full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Status -->
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-power-off mr-2 text-dark-cyan"></i>
+                            Status
+                        </label>
+                        <select name="status" 
+                                class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                            <option value="active" class="text-green-600">Active</option>
+                            <option value="inactive" class="text-yellow-600">Inactive</option>
+                            <option value="archived" class="text-red-600">Archived</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Color Picker -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-palette mr-2 text-dark-cyan"></i>
+                        Department Color
+                    </label>
+                    <div class="flex space-x-2">
+                        <div class="w-8 h-8 rounded-full bg-dark-teal cursor-pointer border-2 border-white shadow" 
+                             onclick="selectColor('dark-teal')"></div>
+                        <div class="w-8 h-8 rounded-full bg-dark-cyan cursor-pointer border-2 border-white shadow"
+                             onclick="selectColor('dark-cyan')"></div>
+                        <div class="w-8 h-8 rounded-full bg-golden-orange cursor-pointer border-2 border-white shadow"
+                             onclick="selectColor('golden-orange')"></div>
+                        <div class="w-8 h-8 rounded-full bg-pearl-aqua cursor-pointer border-2 border-white shadow"
+                             onclick="selectColor('pearl-aqua')"></div>
+                        <div class="w-8 h-8 rounded-full bg-rusty-spice cursor-pointer border-2 border-white shadow"
+                             onclick="selectColor('rusty-spice')"></div>
+                    </div>
+                    <input type="hidden" name="color" id="departmentColor" value="dark-teal">
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex justify-end space-x-3 pt-6 border-t border-vanilla-custard/30">
+                    <button type="button" onclick="closeModal('createDepartmentModal')" 
+                            class="px-5 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-medium">
+                        Cancel
+                    </button>
+                    <button type="button" onclick="submitDepartmentForm()" 
+                            class="px-5 py-3 btn-primary text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all">
+                        <i class="fas fa-plus mr-2"></i>
+                        Create Department
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Enhanced Register Employee Modal -->
+<div id="registerEmployeeModal" class="fixed inset-0 bg-ink-black/70 overflow-y-auto h-full w-full hidden modal z-50 modal-overlay">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-3xl shadow-2xl rounded-xl bg-white">
+        <div class="relative">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-vanilla-custard/30">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-golden-orange/10 to-burnt-caramel/10 flex items-center justify-center mr-3">
+                        <i class="fas fa-user-plus text-golden-orange text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-ink-black">Register Employee</h3>
+                        <p class="text-sm text-dark-cyan/70">Add new team member to the system</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('registerEmployeeModal')" 
+                        class="text-dark-cyan/70 hover:text-oxidized-iron transition-colors p-2 rounded-full hover:bg-gray-100">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <!-- Form -->
+            <form id="registerEmployeeForm" class="space-y-6">
+                {% csrf_token %}
+                
+                <!-- Personal Information -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-user mr-2 text-dark-cyan"></i>
+                            Full Name
+                        </label>
+                        <input type="text" name="full_name" 
+                               class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                               placeholder="Enter full name" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-envelope mr-2 text-dark-cyan"></i>
+                            Email Address
+                        </label>
+                        <input type="email" name="email" 
+                               class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                               placeholder="Enter email address" required>
+                    </div>
+                </div>
+                
+                <!-- Contact & Department -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-phone mr-2 text-dark-cyan"></i>
+                            Phone Number
+                        </label>
+                        <input type="tel" name="phone" 
+                               class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                               placeholder="Enter phone number">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-building mr-2 text-dark-cyan"></i>
+                            Department
+                        </label>
+                        <select name="department" 
+                                class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                            <option value="">Select department</option>
+                            {% for department in departments %}
+                            <option value="{{ department.id }}">{{ department.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Role & Position -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-id-badge mr-2 text-dark-cyan"></i>
+                            Role
+                        </label>
+                        <select name="role" 
+                                class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                            <option value="">Select role</option>
+                            <option value="admin" class="text-dark-teal">Admin</option>
+                            <option value="pm" class="text-golden-orange">Project Manager</option>
+                            <option value="developer" class="text-dark-cyan">Developer</option>
+                            <option value="designer" class="text-pearl-aqua">Designer</option>
+                            <option value="qa" class="text-rusty-spice">QA Tester</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-briefcase mr-2 text-dark-cyan"></i>
+                            Job Position
+                        </label>
+                        <input type="text" name="position" 
+                               class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                               placeholder="Enter job position">
+                    </div>
+                </div>
+                
+                <!-- Salary & Join Date -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-dollar-sign mr-2 text-dark-cyan"></i>
+                            Salary
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-dark-cyan">$</span>
+                            <input type="number" name="salary" 
+                                   class="w-full pl-8 px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                                   placeholder="0.00" step="0.01">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-calendar-alt mr-2 text-dark-cyan"></i>
+                            Join Date
+                        </label>
+                        <input type="date" name="join_date" 
+                               class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex justify-end space-x-3 pt-6 border-t border-vanilla-custard/30">
+                    <button type="button" onclick="closeModal('registerEmployeeModal')" 
+                            class="px-5 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-medium">
+                        Cancel
+                    </button>
+                    <button type="button" onclick="submitEmployeeForm()" 
+                            class="px-5 py-3 btn-primary text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all">
+                        <i class="fas fa-user-plus mr-2"></i>
+                        Register Employee
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Enhanced Create Project Modal -->
+<div id="createProjectModal" class="fixed inset-0 bg-ink-black/70 overflow-y-auto h-full w-full hidden modal z-50 modal-overlay">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-3xl shadow-2xl rounded-xl bg-white">
+        <div class="relative">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-vanilla-custard/30">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-pearl-aqua/10 to-dark-cyan/10 flex items-center justify-center mr-3">
+                        <i class="fas fa-project-diagram text-pearl-aqua text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-ink-black">Create Project</h3>
+                        <p class="text-sm text-dark-cyan/70">Start a new project initiative</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('createProjectModal')" 
+                        class="text-dark-cyan/70 hover:text-oxidized-iron transition-colors p-2 rounded-full hover:bg-gray-100">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <!-- Form -->
+            <form id="createProjectForm" class="space-y-6">
+                {% csrf_token %}
+                
+                <!-- Project Title -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-heading mr-2 text-dark-cyan"></i>
+                        Project Title
+                    </label>
+                    <input type="text" name="title" 
+                           class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                           placeholder="Enter project title" required>
+                </div>
+                
+                <!-- Description -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-align-left mr-2 text-dark-cyan"></i>
+                        Description
+                    </label>
+                    <textarea name="description" 
+                              class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                              rows="3" placeholder="Describe the project" required></textarea>
+                </div>
+                
+                <!-- Department & Type -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-building mr-2 text-dark-cyan"></i>
+                            Department
+                        </label>
+                        <select name="department" 
+                                class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                            <option value="">Select department</option>
+                            {% for department in departments %}
+                            <option value="{{ department.id }}">{{ department.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-tags mr-2 text-dark-cyan"></i>
+                            Project Type
+                        </label>
+                        <select name="project_type" 
+                                class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                            <option value="">Select type</option>
+                            <option value="web" class="text-dark-teal">Web Application</option>
+                            <option value="mobile" class="text-golden-orange">Mobile Application</option>
+                            <option value="research" class="text-pearl-aqua">Research Project</option>
+                            <option value="internal" class="text-dark-cyan">Internal System</option>
+                            <option value="client" class="text-rusty-spice">Client Project</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Dates -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-calendar-plus mr-2 text-dark-cyan"></i>
+                            Start Date
+                        </label>
+                        <input type="date" name="start_date" 
+                               class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-calendar-check mr-2 text-dark-cyan"></i>
+                            End Date
+                        </label>
+                        <input type="date" name="end_date" 
+                               class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex justify-end space-x-3 pt-6 border-t border-vanilla-custard/30">
+                    <button type="button" onclick="closeModal('createProjectModal')" 
+                            class="px-5 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-medium">
+                        Cancel
+                    </button>
+                    <button type="button" onclick="submitProjectForm()" 
+                            class="px-5 py-3 btn-primary text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all">
+                        <i class="fas fa-plus mr-2"></i>
+                        Create Project
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Enhanced Assign PM Modal -->
+<div id="assignPMModal" class="fixed inset-0 bg-ink-black/70 overflow-y-auto h-full w-full hidden modal z-50 modal-overlay">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-lg shadow-2xl rounded-xl bg-white">
+        <div class="relative">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-vanilla-custard/30">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-rusty-spice/10 to-oxidized-iron/10 flex items-center justify-center mr-3">
+                        <i class="fas fa-user-tie text-rusty-spice text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-ink-black">Assign Project Manager</h3>
+                        <p class="text-sm text-dark-cyan/70">Assign leadership to projects</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('assignPMModal')" 
+                        class="text-dark-cyan/70 hover:text-oxidized-iron transition-colors p-2 rounded-full hover:bg-gray-100">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <!-- Form -->
+            <form id="assignPMForm" class="space-y-5">
+                {% csrf_token %}
+                
+                <!-- Project Selection -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-project-diagram mr-2 text-dark-cyan"></i>
+                        Select Project
+                    </label>
+                    <select name="project_id" 
+                            class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                        <option value="">Select project</option>
+                        {% for project in unassigned_projects %}
+                        <option value="{{ project.id }}">{{ project.name }} • {{ project.department.name }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if not unassigned_projects %}
+                    <div class="mt-3 p-4 bg-gradient-to-r from-vanilla-custard/20 to-golden-orange/20 rounded-lg border border-golden-orange/30">
+                        <div class="flex items-center">
+                            <i class="fas fa-check-circle text-golden-orange mr-3"></i>
+                            <p class="text-sm text-dark-teal">All projects have managers assigned!</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- PM Selection -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-user-tie mr-2 text-dark-cyan"></i>
+                        Project Manager
+                    </label>
+                    <select name="pm_id" 
+                            class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                        <option value="">Select project manager</option>
+                        {% for pm in project_managers %}
+                        <option value="{{ pm.id }}">
+                            {{ pm.get_full_name }} • {{ pm.employee_profile.department.name|default:"General" }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex justify-end space-x-3 pt-6 border-t border-vanilla-custard/30">
+                    <button type="button" onclick="closeModal('assignPMModal')" 
+                            class="px-5 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-medium">
+                        Cancel
+                    </button>
+                    <button type="button" onclick="submitAssignPMForm()" 
+                            class="px-5 py-3 btn-primary text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all" 
+                            {% if not unassigned_projects %}disabled{% endif %}>
+                        <i class="fas fa-user-check mr-2"></i>
+                        Assign Manager
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Enhanced Stats Details Modal -->
+<div id="statsDetailsModal" class="fixed inset-0 bg-ink-black/70 overflow-y-auto h-full w-full hidden modal z-50 modal-overlay">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-4xl shadow-2xl rounded-xl bg-white">
+        <div class="relative">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-vanilla-custard/30">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-dark-teal/10 to-dark-cyan/10 flex items-center justify-center mr-3">
+                        <i class="fas fa-chart-pie text-dark-teal text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-ink-black" id="statsModalTitle">Statistics Details</h3>
+                        <p class="text-sm text-dark-cyan/70">Detailed breakdown and insights</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('statsDetailsModal')" 
+                        class="text-dark-cyan/70 hover:text-oxidized-iron transition-colors p-2 rounded-full hover:bg-gray-100">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <!-- Content -->
+            <div id="statsModalContent">
+                <div class="text-center py-12">
+                    <div class="loading-spinner mx-auto mb-4"></div>
+                    <p class="text-dark-cyan/70">Loading detailed statistics...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Admin API endpoints (ensure dashboard has the same constants other admin pages define)
+    const ADMIN_API_CREATE_DEPARTMENT = "{% url 'admins:api_create_department' %}";
+    const ADMIN_API_CREATE_PROJECT = "{% url 'admins:api_create_project' %}";
+    const ADMIN_API_CREATE_EMPLOYEE = "{% url 'admins:api_create_employee' %}";
+    const ADMIN_API_ASSIGN_PM = "{% url 'admins:api_assign_pm' %}";
+    const ADMIN_API_STATS_DETAILS = "{% url 'admins:api_stats_details' 0 %}";
+
+    // Set default dates in forms
+    document.addEventListener('DOMContentLoaded', function() {
+        const today = new Date().toISOString().split('T')[0];
+        const nextWeek = new Date();
+        nextWeek.setDate(nextWeek.getDate() + 7);
+        const nextWeekStr = nextWeek.toISOString().split('T')[0];
+        
+        // Set dates in forms
+        const dateInputs = document.querySelectorAll('input[type="date"]');
+        dateInputs.forEach(input => {
+            if (input.name === 'join_date') {
+                input.value = today;
+            } else if (input.name === 'start_date') {
+                input.value = today;
+            } else if (input.name === 'end_date') {
+                input.value = nextWeekStr;
+            } else if (input.name === 'due_date') {
+                input.value = nextWeekStr;
+            }
+        });
+        
+        // Initialize charts and animations
+        initializeProgressBars();
+        
+        // Poll for updates
+        setInterval(() => {
+            updateNotificationCounts();
+        }, 30000);
+    });
+    
+
+
+    // Initialize progress bars with animation
+    function initializeProgressBars() {
+        const progressBars = document.querySelectorAll('.progress-bar');
+        progressBars.forEach(bar => {
+            const width = bar.style.width;
+            bar.style.width = '0';
+            setTimeout(() => {
+                bar.style.width = width;
+            }, 100);
+        });
+    }
+    
+    // Color selection for department modal
+    function selectColor(color) {
+        const colorInput = document.getElementById('departmentColor');
+        colorInput.value = color;
+        
+        // Update visual selection
+        document.querySelectorAll('.w-8.h-8.rounded-full').forEach(el => {
+            el.classList.remove('border-4', 'border-white', 'ring-2', 'ring-offset-2');
+            el.classList.add('border-2');
+        });
+        
+        event.target.classList.remove('border-2');
+        event.target.classList.add('border-4', 'border-white', 'ring-2', 'ring-offset-2');
+    }
+    
+    // Enhanced modal functions
+    function openCreateDepartmentModal() {
+        document.getElementById('createDepartmentModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        // Reset color selection
+        selectColor('dark-teal');
+    }
+    
+    function openRegisterEmployeeModal() {
+        document.getElementById('registerEmployeeModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function openCreateProjectModal() {
+        document.getElementById('createProjectModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function openAssignPMModal() {
+        document.getElementById('assignPMModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+    }
+    
+    // Form validation
+    function validateForm(formId) {
+        const form = document.getElementById(formId);
+        let isValid = true;
+        
+        form.querySelectorAll('[required]').forEach(field => {
+            if (!field.value.trim()) {
+                field.classList.add('error');
+                isValid = false;
+            } else {
+                field.classList.remove('error');
+            }
+        });
+        
+        return isValid;
+    }
+    
+    // Enhanced form submission with toast notifications
+    async function submitDepartmentForm() {
+        if (!validateForm('createDepartmentForm')) {
+            showToast('Validation Error', 'Please fill all required fields', 'error');
+            return;
+        }
+        
+        const form = document.getElementById('createDepartmentForm');
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        try {
+            showToast('Processing', 'Creating department...', 'info');
+            
+            const response = await fetch(ADMIN_API_CREATE_DEPARTMENT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showToast('Success', 'Department created successfully!', 'success');
+                closeModal('createDepartmentModal');
+                form.reset();
+                
+                // Reload after 1.5 seconds
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('Error', result.error || 'Failed to create department', 'error');
+            }
+        } catch (error) {
+            console.error('Form submission error:', error);
+            showToast('Error', 'Network error occurred', 'error');
+        }
+    }
+    
+    async function submitEmployeeForm() {
+        if (!validateForm('registerEmployeeForm')) {
+            showToast('Validation Error', 'Please fill all required fields', 'error');
+            return;
+        }
+        
+        const form = document.getElementById('registerEmployeeForm');
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        try {
+            showToast('Processing', 'Registering employee...', 'info');
+            
+            const response = await fetch(ADMIN_API_CREATE_EMPLOYEE, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showToast('Success', 'Employee registered successfully!', 'success');
+                closeModal('registerEmployeeModal');
+                form.reset();
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('Error', result.error || 'Failed to register employee', 'error');
+            }
+        } catch (error) {
+            console.error('Form submission error:', error);
+            showToast('Error', 'Network error occurred', 'error');
+        }
+    }
+    
+    async function submitProjectForm() {
+        if (!validateForm('createProjectForm')) {
+            showToast('Validation Error', 'Please fill all required fields', 'error');
+            return;
+        }
+        
+        const form = document.getElementById('createProjectForm');
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        // Date validation
+        const startDate = new Date(data.start_date);
+        const endDate = new Date(data.end_date);
+        
+        if (endDate <= startDate) {
+            showToast('Validation Error', 'End date must be after start date', 'error');
+            return;
+        }
+        
+        try {
+            showToast('Processing', 'Creating project...', 'info');
+            
+            const response = await fetch(ADMIN_API_CREATE_PROJECT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showToast('Success', 'Project created successfully!', 'success');
+                closeModal('createProjectModal');
+                form.reset();
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('Error', result.error || 'Failed to create project', 'error');
+            }
+        } catch (error) {
+            console.error('Form submission error:', error);
+            showToast('Error', 'Network error occurred', 'error');
+        }
+    }
+    
+    async function submitAssignPMForm() {
+        if (!validateForm('assignPMForm')) {
+            showToast('Validation Error', 'Please select both project and manager', 'error');
+            return;
+        }
+        
+        const form = document.getElementById('assignPMForm');
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        try {
+            showToast('Processing', 'Assigning project manager...', 'info');
+            
+            const response = await fetch(ADMIN_API_ASSIGN_PM, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showToast('Success', 'Project manager assigned successfully!', 'success');
+                closeModal('assignPMModal');
+                form.reset();
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('Error', result.error || 'Failed to assign project manager', 'error');
+            }
+        } catch (error) {
+            console.error('Form submission error:', error);
+            showToast('Error', 'Network error occurred', 'error');
+        }
+    }
+    
+    // Load stats details with enhanced UI
+    async function loadStatsDetails(type) {
+        openStatsModal();
+        
+        try {
+            const response = await fetch(ADMIN_API_STATS_DETAILS.replace('0', type));
+            const result = await response.json();
+            
+            if (response.ok) {
+                displayStatsDetails(type, result);
+            } else {
+                displayStatsError();
+            }
+        } catch (error) {
+            console.error('Failed to load stats details:', error);
+            displayStatsError();
+        }
+    }
+    
+    function openStatsModal() {
+        document.getElementById('statsDetailsModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function displayStatsDetails(type, data) {
+        const titleMap = {
+            'projects': 'Project Statistics',
+            'employees': 'Employee Statistics',
+            'pms': 'Project Manager Statistics',
+            'tasks': 'Task Statistics'
+        };
+        
+        const colorMap = {
+            'projects': 'dark-teal',
+            'employees': 'golden-orange',
+            'pms': 'pearl-aqua',
+            'tasks': 'rusty-spice'
+        };
+        
+        const color = colorMap[type] || 'dark-teal';
+        document.getElementById('statsModalTitle').textContent = titleMap[type] || 'Statistics';
+        
+        let content = '';
+        
+        switch(type) {
+            case 'projects':
+                content = `
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-gradient-to-br from-${color}/5 to-${color}/10 p-5 rounded-xl">
+                            <h4 class="font-medium text-ink-black mb-4 flex items-center">
+                                <i class="fas fa-chart-pie mr-2 text-${color}"></i>
+                                By Status
+                            </h4>
+                            <div class="space-y-3">
+                                ${data.by_status ? data.by_status.map(stat => `
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <div class="w-2 h-2 rounded-full bg-${color} mr-2"></div>
+                                            <span class="text-sm text-dark-cyan">${stat.status}</span>
+                                        </div>
+                                        <span class="font-medium text-ink-black">${stat.count}</span>
+                                    </div>
+                                `).join('') : '<p class="text-dark-cyan/70 text-sm">No data</p>'}
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gradient-to-br from-dark-cyan/5 to-pearl-aqua/10 p-5 rounded-xl">
+                            <h4 class="font-medium text-ink-black mb-4 flex items-center">
+                                <i class="fas fa-building mr-2 text-dark-cyan"></i>
+                                By Department
+                            </h4>
+                            <div class="space-y-3">
+                                ${data.by_department ? data.by_department.map(stat => `
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <div class="w-2 h-2 rounded-full bg-dark-cyan mr-2"></div>
+                                            <span class="text-sm text-dark-cyan">${stat.department}</span>
+                                        </div>
+                                        <span class="font-medium text-ink-black">${stat.count}</span>
+                                    </div>
+                                `).join('') : '<p class="text-dark-cyan/70 text-sm">No data</p>'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                break;
+                
+            default:
+                content = `
+                    <div class="text-center py-12">
+                        <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-${color}/10 to-${color}/20 flex items-center justify-center">
+                            <i class="fas fa-chart-line text-${color} text-2xl"></i>
+                        </div>
+                        <h4 class="text-lg font-medium text-ink-black mb-2">Detailed Analytics</h4>
+                        <p class="text-dark-cyan/70 mb-6">Comprehensive statistics for ${type} are being prepared.</p>
+                        <button onclick="closeModal('statsDetailsModal')" 
+                                class="px-5 py-2 bg-${color} text-white rounded-lg font-medium">
+                            Close
+                        </button>
+                    </div>
+                `;
+        }
+        
+        document.getElementById('statsModalContent').innerHTML = content;
+    }
+    // Add to extra_js section in dashboard.html
+
+// Open export reports modal
+function openExportReportsModal() {
+    document.getElementById('exportReportsModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+// Export all reports
+async function exportAllReports() {
+    showToast('Processing', 'Preparing all reports for download...', 'info');
+    
+    // Close modal first
+    closeModal('exportReportsModal');
+    
+    // Create a small delay for better UX
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Show success message
+    showToast('Ready', 'All reports are ready for download. Check your downloads folder.', 'success');
+    
+    // Trigger download of all reports one by one
+    setTimeout(() => {
+        // Create an array of export URLs
+        const exportUrls = [
+            "{% url 'admins:export_projects' %}",
+            "{% url 'admins:export_employees' %}",
+            "{% url 'admins:export_tasks' %}",
+            "{% url 'admins:export_departments' %}",
+            "{% url 'admins:export_activity' %}"
+        ];
+        
+        // Download each report
+        exportUrls.forEach((url, index) => {
+            setTimeout(() => {
+                window.open(url, '_blank');
+            }, index * 1000); // 1 second delay between each download
+        });
+    }, 1500);
+}
+
+// Enhanced toast notification function (if not already defined)
+function showToast(title, message, type = 'info') {
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `fixed top-4 right-4 z-50 p-4 rounded-xl shadow-2xl transform transition-all duration-300 translate-x-full`;
+    
+    // Set background color based on type
+    let bgColor = '';
+    let icon = '';
+    
+    switch(type) {
+        case 'success':
+            bgColor = 'bg-gradient-to-r from-dark-teal to-dark-cyan';
+            icon = 'fas fa-check-circle';
+            break;
+        case 'error':
+            bgColor = 'bg-gradient-to-r from-rusty-spice to-oxidized-iron';
+            icon = 'fas fa-exclamation-circle';
+            break;
+        case 'info':
+            bgColor = 'bg-gradient-to-r from-pearl-aqua to-dark-cyan';
+            icon = 'fas fa-info-circle';
+            break;
+        default:
+            bgColor = 'bg-gradient-to-r from-dark-cyan to-pearl-aqua';
+            icon = 'fas fa-bell';
+    }
+    
+    toast.innerHTML = `
+        <div class="${bgColor} text-white p-4 rounded-xl">
+            <div class="flex items-start">
+                <div class="flex-shrink-0 pt-0.5">
+                    <i class="${icon} text-xl"></i>
+                </div>
+                <div class="ml-3 flex-1">
+                    <p class="font-semibold">${title}</p>
+                    <p class="text-sm opacity-90 mt-1">${message}</p>
+                </div>
+                <button onclick="this.parentElement.parentElement.parentElement.remove()" 
+                        class="ml-4 flex-shrink-0 text-white opacity-70 hover:opacity-100">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    
+    // Add to page
+    document.body.appendChild(toast);
+    
+    // Animate in
+    setTimeout(() => {
+        toast.classList.remove('translate-x-full');
+        toast.classList.add('translate-x-0');
+    }, 10);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (toast.parentElement) {
+            toast.classList.add('translate-x-full');
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.remove();
+                }
+            }, 300);
+        }
+    }, 5000);
+}
+    function displayStatsError() {
+        document.getElementById('statsModalContent').innerHTML = `
+            <div class="text-center py-12">
+                <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-oxidized-iron/10 to-brown-red/10 flex items-center justify-center">
+                    <i class="fas fa-exclamation-triangle text-oxidized-iron text-2xl"></i>
+                </div>
+                <h4 class="text-lg font-medium text-ink-black mb-2">Unable to Load Data</h4>
+                <p class="text-dark-cyan/70 mb-6">Failed to load statistics. Please try again later.</p>
+                <button onclick="closeModal('statsDetailsModal')" 
+                        class="px-5 py-2 bg-oxidized-iron text-white rounded-lg font-medium">
+                    Close
+                </button>
+            </div>
+        `;
+    }
+    
+    // Close modals with escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                if (!modal.classList.contains('hidden')) {
+                    closeModal(modal.id);
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

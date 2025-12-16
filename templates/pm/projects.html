@@ -1,0 +1,207 @@
+{% extends 'pm/base.html' %}
+
+{% block page_title %}My Projects{% endblock %}
+
+{% block content %}
+    <!-- Filters and Search -->
+    <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
+            <div class="flex flex-wrap gap-2">
+                <button class="filter-active px-3 py-1 rounded-full text-sm transition" data-status="">All Projects</button>
+                <button class="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200 transition" data-status="active">Active</button>
+                <button class="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200 transition" data-status="completed">Completed</button>
+                <button class="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200 transition" data-status="on_hold">On Hold</button>
+                <button class="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200 transition" data-status="planning">Planning</button>
+            </div>
+            
+            <div class="flex space-x-3 w-full md:w-auto">
+                <div class="relative flex-1 md:w-64">
+                    <input type="text" id="projectSearch" placeholder="Search projects..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-dark-teal">
+                    <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                </div>
+                <button class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex items-center">
+                    <i class="fas fa-filter mr-2"></i>
+                    <span>Filters</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Projects Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8" id="projectsContainer">
+        {% for project in projects %}
+        <div class="bg-white rounded-xl shadow-sm p-6 card-hover transition project-card" data-status="{{ project.status }}" data-name="{{ project.name|lower }}">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-ink-black">{{ project.name }}</h3>
+                    <p class="text-sm text-gray-500 mt-1">{{ project.description|truncatechars:60 }}</p>
+                </div>
+                <span class="px-3 py-1 status-{{ project.status }} rounded-full text-sm">
+                    {{ project.get_status_display }}
+                </span>
+            </div>
+            
+            <div class="mb-4">
+                <div class="flex justify-between text-sm text-gray-600 mb-1">
+                    <span>Progress</span>
+                    <span>{{ project.progress_percentage }}%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="bg-dark-teal h-2 rounded-full" style="width: {{ project.progress_percentage }}%"></div>
+                </div>
+            </div>
+            
+            <div class="flex justify-between items-center text-sm text-gray-600 mb-4">
+                <div class="flex items-center">
+                    <i class="fas fa-calendar-alt mr-1"></i>
+                    <span>
+                        {% if project.due_date %}
+                            Due: {{ project.due_date|date:"M d, Y" }}
+                        {% else %}
+                            No due date
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="flex items-center">
+                    <i class="fas fa-users mr-1"></i>
+                    <span>{{ project.team_members_count }} members</span>
+                </div>
+            </div>
+            
+            <div class="flex justify-between items-center">
+                <div class="flex -space-x-2">
+                    {% for member in project.recent_members %}
+                        <div class="w-8 h-8 rounded-full bg-{{ member.color }} flex items-center justify-center text-white text-xs font-bold border-2 border-white">
+                            {{ member.initials }}
+                        </div>
+                    {% endfor %}
+                    {% if project.team_members_count > 4 %}
+                        <div class="w-8 h-8 rounded-full bg-gray-400 flex items-center justify-center text-white text-xs font-bold border-2 border-white">
+                            +{{ project.team_members_count|add:"-4" }}
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="flex space-x-2">
+                    <a href="{% url 'pm_project_detail' project.id %}" class="text-dark-teal hover:text-dark-cyan">
+                        <i class="fas fa-chart-line"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-span-3 bg-white rounded-xl shadow-sm p-12 text-center">
+            <div class="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-project-diagram text-gray-400 text-2xl"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-600 mb-2">No Projects Assigned</h3>
+            <p class="text-gray-500">You don't have any projects assigned to you yet.</p>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Project Statistics -->
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <h3 class="text-lg font-semibold text-ink-black mb-6">Project Statistics</h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-gray-50 rounded-lg p-4 text-center">
+                <div class="w-12 h-12 rounded-full bg-dark-teal bg-opacity-10 flex items-center justify-center mx-auto mb-2">
+                    <i class="fas fa-project-diagram text-dark-teal text-xl"></i>
+                </div>
+                <p class="text-2xl font-bold text-ink-black">{{ total_projects }}</p>
+                <p class="text-sm text-gray-500">Total Projects</p>
+            </div>
+            
+            <div class="bg-gray-50 rounded-lg p-4 text-center">
+                <div class="w-12 h-12 rounded-full bg-dark-cyan bg-opacity-10 flex items-center justify-center mx-auto mb-2">
+                    <i class="fas fa-play-circle text-dark-cyan text-xl"></i>
+                </div>
+                <p class="text-2xl font-bold text-ink-black">{{ active_projects }}</p>
+                <p class="text-sm text-gray-500">Active Projects</p>
+            </div>
+            
+            <div class="bg-gray-50 rounded-lg p-4 text-center">
+                <div class="w-12 h-12 rounded-full bg-pearl-aqua bg-opacity-10 flex items-center justify-center mx-auto mb-2">
+                    <i class="fas fa-check-circle text-pearl-aqua text-xl"></i>
+                </div>
+                <p class="text-2xl font-bold text-ink-black">{{ completed_projects }}</p>
+                <p class="text-sm text-gray-500">Completed</p>
+            </div>
+            
+            <div class="bg-gray-50 rounded-lg p-4 text-center">
+                <div class="w-12 h-12 rounded-full bg-golden-orange bg-opacity-10 flex items-center justify-center mx-auto mb-2">
+                    <i class="fas fa-pause-circle text-golden-orange text-xl"></i>
+                </div>
+                <p class="text-2xl font-bold text-ink-black">{{ on_hold_planning_projects }}</p>
+                <p class="text-sm text-gray-500">On Hold/Planning</p>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .status-active { background-color: rgba(10, 147, 150, 0.1); color: #0a9396; }
+    .status-completed { background-color: rgba(148, 210, 189, 0.1); color: #94d2bd; }
+    .status-on_hold { background-color: rgba(238, 155, 0, 0.1); color: #ee9b00; }
+    .status-planning { background-color: rgba(187, 62, 3, 0.1); color: #bb3e03; }
+    .filter-active {
+        background-color: #005f73;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Filter buttons functionality
+    const filterButtons = document.querySelectorAll('[data-status]');
+    const projectCards = document.querySelectorAll('.project-card');
+    const searchInput = document.getElementById('projectSearch');
+    
+    let currentFilter = '';
+    let currentSearch = '';
+    
+    filterButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Remove active class from all buttons
+            filterButtons.forEach(btn => {
+                btn.classList.remove('filter-active', 'bg-dark-teal', 'text-white');
+                btn.classList.add('bg-gray-100', 'text-gray-700');
+            });
+            
+            // Add active class to clicked button
+            this.classList.remove('bg-gray-100', 'text-gray-700');
+            this.classList.add('filter-active', 'bg-dark-teal', 'text-white');
+            
+            currentFilter = this.getAttribute('data-status');
+            filterProjects();
+        });
+    });
+    
+    searchInput.addEventListener('input', function() {
+        currentSearch = this.value.toLowerCase();
+        filterProjects();
+    });
+    
+    function filterProjects() {
+        projectCards.forEach(card => {
+            const status = card.getAttribute('data-status');
+            const name = card.getAttribute('data-name');
+            
+            const statusMatch = !currentFilter || status === currentFilter;
+            const searchMatch = !currentSearch || name.includes(currentSearch) || 
+                               card.querySelector('h3').textContent.toLowerCase().includes(currentSearch) ||
+                               card.querySelector('p').textContent.toLowerCase().includes(currentSearch);
+            
+            if (statusMatch && searchMatch) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+    
+    
+</script>
+{% endblock %}

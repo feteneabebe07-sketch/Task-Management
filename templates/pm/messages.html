@@ -1,0 +1,1300 @@
+<!-- templates/pm/messages.html -->
+{% extends 'pm/base.html' %}
+{% load static %}
+
+{% block page_title %}Messages{% endblock %}
+
+{% block extra_css %}
+<style>
+    .conversation-active {
+        background-color: rgba(148, 210, 189, 0.1);
+        border-left: 4px solid #94d2bd;
+    }
+    
+    .message-sent {
+        background-color: #005f73;
+        color: white;
+        border-radius: 18px 18px 4px 18px;
+        margin-left: auto;
+    }
+    
+    .message-received {
+        background-color: #f1f5f9;
+        color: #334155;
+        border-radius: 18px 18px 18px 4px;
+    }
+    
+    .online-indicator {
+        width: 10px;
+        height: 10px;
+        background-color: #0a9396;
+        border-radius: 50%;
+        border: 2px solid white;
+        position: absolute;
+        bottom: 0;
+        right: 0;
+    }
+    
+    .typing-indicator {
+        font-size: 12px;
+        color: #666;
+        font-style: italic;
+        padding: 5px 0;
+    }
+    
+    .unread-badge {
+        background-color: #ee9b00;
+        color: white;
+        font-size: 12px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .filter-active {
+        background-color: #005f73;
+        color: white;
+    }
+    
+    #chatArea {
+        display: none;
+    }
+    
+    #chatArea.active {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    #noChatSelected {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+    }
+    
+    .message-date-separator {
+        text-align: center;
+        margin: 20px 0;
+        position: relative;
+    }
+    
+    .message-date-separator span {
+        background-color: white;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 12px;
+        color: #666;
+        border: 1px solid #e2e8f0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex-1 overflow-hidden flex">
+    <!-- Conversations Sidebar -->
+    <div class="w-1/3 bg-white border-r border-gray-200 flex flex-col">
+        <!-- Search and Filters -->
+        <div class="p-4 border-b border-gray-200">
+            <div class="relative mb-3">
+                <input type="text" id="searchUsers" placeholder="Search team members..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-dark-teal">
+                <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+            </div>
+            <div class="flex space-x-2">
+                <button id="filterAll" class="filter-active px-3 py-1 rounded-full text-sm transition">All</button>
+                <button id="filterUnread" class="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200 transition">Unread</button>
+                <button id="filterOnline" class="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200 transition">Online</button>
+            </div>
+        </div>
+        
+        <!-- Conversations List -->
+        <div class="flex-1 overflow-y-auto" id="conversationsList">
+            {% if conversations %}
+                {% for conv in conversations %}
+                <div class="p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition conversation-item {% if forloop.first %}conversation-active{% endif %}" 
+                     data-user-id="{{ conv.other_user.id }}"
+                     data-conversation-id="conv_{{ user.id }}_{{ conv.other_user.id }}"
+                     data-unread="{{ conv.unread_count }}">
+                    <div class="flex items-start">
+                        <div class="relative">
+                            <div class="w-12 h-12 rounded-full {{ conv.color }} flex items-center justify-center text-white font-bold">
+                                {{ conv.initials }}
+                            </div>
+                            {% if conv.is_online %}
+                            <div class="online-indicator"></div>
+                            {% endif %}
+                        </div>
+                        <div class="ml-3 flex-1">
+                            <div class="flex justify-between items-start">
+                                <h3 class="font-medium text-ink-black">{{ conv.name }}</h3>
+                                <span class="text-xs text-gray-500">     {% if conv.last_message_time %}         {{ conv.last_message_time|timesince }} ago     {% else %}         Just now     {% endif %} </span>
+                            </div>
+                            <p class="text-sm text-gray-600 truncate">{{ conv.last_message|truncatechars:40 }}</p>
+                            <div class="flex justify-between items-center mt-1">
+                                <span class="text-xs text-gray-500">{{ conv.job_position }}</span>
+                                {% if conv.unread_count > 0 %}
+                                <div class="unread-badge">{{ conv.unread_count }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+            <div class="text-center py-8 text-gray-500">
+                <i class="fas fa-comments text-2xl mb-2"></i>
+                <p>No conversations yet</p>
+                <p class="text-sm mt-1">Start a conversation with a team member</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Team Members -->
+        <div class="border-t border-gray-200">
+            <div class="p-3 bg-gray-50">
+                <h4 class="text-sm font-medium text-gray-700">Team Members</h4>
+            </div>
+            <div class="max-h-64 overflow-y-auto" id="teamMembersList">
+                {% for member in team_members %}
+                <div class="p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition team-member-item" 
+                     data-user-id="{{ member.id }}"
+                     data-name="{{ member.get_full_name|default:member.username }}">
+                    <div class="flex items-center">
+                        <div class="relative">
+                            <div class="w-10 h-10 rounded-full {% cycle 'bg-dark-teal' 'bg-dark-cyan' 'bg-golden-orange' 'bg-rusty-spice' %} flex items-center justify-center text-white text-sm font-bold">
+                                {{ member.get_full_name|default:member.username|slice:"0:2"|upper }}
+                            </div>
+                        </div>
+                        <div class="ml-3 flex-1">
+                            <h4 class="text-sm font-medium text-ink-black">{{ member.get_full_name|default:member.username }}</h4>
+                            <p class="text-xs text-gray-500">
+                                {% if member.employee_profile.job_position %}{{ member.employee_profile.job_position }}{% else %}Team Member{% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="p-4 text-center text-gray-500">
+                    <p class="text-sm">No team members available</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Chat Area - Initially hidden -->
+    <div id="chatArea" class="flex-1 flex flex-col">
+        <!-- Chat Header -->
+        <div class="bg-white border-b border-gray-200 p-4 flex justify-between items-center">
+            <div class="flex items-center">
+                <div class="relative">
+                    <div id="chatAvatar" class="w-10 h-10 rounded-full bg-dark-teal flex items-center justify-center text-white font-bold">
+                        <!-- Initials will be set by JavaScript -->
+                    </div>
+                    <div id="chatOnlineStatus" class="online-indicator" style="display: none;"></div>
+                </div>
+                <div class="ml-3">
+                    <h3 id="chatUserName" class="font-medium text-ink-black"></h3>
+                    <p id="chatUserRole" class="text-xs text-gray-500"></p>
+                </div>
+            </div>
+            <div class="flex space-x-2">
+                <button class="p-2 text-gray-500 hover:text-dark-teal rounded-full hover:bg-gray-100">
+                    <i class="fas fa-phone"></i>
+                </button>
+                <button id="chatInfoBtn" class="p-2 text-gray-500 hover:text-dark-teal rounded-full hover:bg-gray-100">
+                    <i class="fas fa-info-circle"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Messages Container -->
+        <div class="flex-1 overflow-y-auto p-4 bg-gray-50" id="messagesContainer">
+            <!-- Messages will be loaded here -->
+            <div class="text-center py-8 text-gray-500">
+                <p>Select a conversation to start messaging</p>
+            </div>
+        </div>
+        
+        <!-- Message Input -->
+        <div class="bg-white border-t border-gray-200 p-4">
+            <div class="flex items-center">
+                <button id="attachFileBtn" class="p-2 text-gray-500 hover:text-dark-teal rounded-full hover:bg-gray-100 mr-1">
+                    <i class="fas fa-paperclip"></i>
+                </button>
+                <button id="attachImageBtn" class="p-2 text-gray-500 hover:text-dark-teal rounded-full hover:bg-gray-100 mr-3">
+                    <i class="fas fa-image"></i>
+                </button>
+                
+                <div class="flex-1 relative">
+                    <input type="text" id="messageInput" placeholder="Type a message..." class="w-full pl-4 pr-10 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-dark-teal" disabled>
+                    <button id="sendMessageBtn" class="absolute right-3 top-3 text-gray-500 hover:text-dark-teal" disabled>
+                        <i class="far fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="typingIndicator" class="typing-indicator hidden">
+                <span id="typingUser"></span> is typing...
+            </div>
+        </div>
+    </div>
+    
+    <!-- No Chat Selected View -->
+    <div id="noChatSelected" class="flex-1 flex items-center justify-center bg-gray-50">
+        <div class="text-center max-w-md">
+            <div class="w-24 h-24 bg-dark-teal bg-opacity-10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i class="fas fa-comments text-dark-teal text-3xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-ink-black mb-3">ProjectFlow Messages</h3>
+            <p class="text-gray-600 mb-6">Select a conversation from the sidebar to start messaging with your team members, or start a new conversation.</p>
+            <div class="flex justify-center space-x-3">
+                <button id="startNewFromList" class="px-4 py-2 bg-dark-teal text-white rounded-lg hover:bg-dark-cyan">
+                    <i class="fas fa-plus mr-2"></i>New Conversation
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chat Info Modal -->
+<div id="chatInfoModal" class="modal">
+    <div class="modal-content max-w-md">
+        <div class="p-6 border-b border-gray-200">
+            <h3 class="text-xl font-bold text-ink-black">User Information</h3>
+        </div>
+        <div class="p-6">
+            <div class="mb-6">
+                <div class="flex items-center mb-4">
+                    <div id="infoAvatar" class="w-16 h-16 rounded-full bg-dark-teal flex items-center justify-center text-white text-xl font-bold mr-4">
+                    </div>
+                    <div>
+                        <h4 id="infoName" class="font-bold text-lg"></h4>
+                        <p id="infoJobPosition" class="text-gray-600"></p>
+                        <div class="flex items-center mt-1">
+                            <span id="infoStatus" class="text-xs px-2 py-1 rounded-full bg-gray-100"></span>
+                            <span id="infoLastSeen" class="text-xs text-gray-500 ml-2"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-sm text-gray-500">Email</label>
+                        <p id="infoEmail" class="font-medium"></p>
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-500">Department</label>
+                        <p id="infoDepartment" class="font-medium"></p>
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-500">Projects</label>
+                        <p id="infoProjects" class="font-medium"></p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-end pt-4 mt-6 border-t border-gray-200">
+                <button type="button" id="closeChatInfoBtn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Global variables
+    let websocket = null;
+    let currentConversationUserId = null;
+    let currentConversationId = null;
+    let typingTimeout = null;
+    let reconnectTimeout = null;
+    let reconnectAttempts = 0;
+    let lastMessageId = null;
+    
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeWebSocket();
+        setupEventListeners();
+        updateUnreadCount();
+    });
+    
+    function initializeWebSocket() {
+        const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+        const wsUrl = protocol + window.location.host + '/ws/messages/';
+        
+        console.log('Connecting to WebSocket:', wsUrl);
+        
+        websocket = new WebSocket(wsUrl);
+        
+        websocket.onopen = function(event) {
+            console.log('WebSocket connection established');
+            reconnectAttempts = 0;
+            
+            // Send authentication message
+            websocket.send(JSON.stringify({
+                type: 'authenticate',
+                user_id: {{ user.id }}
+            }));
+        };
+        
+        websocket.onmessage = function(event) {
+            try {
+                const data = JSON.parse(event.data);
+                console.log('WebSocket message received:', data);
+                
+                switch(data.type) {
+                    case 'connection_established':
+                        console.log('WebSocket authenticated');
+                        break;
+                        
+                    case 'direct_message':
+                        handleIncomingMessage(data);
+                        break;
+                        
+                    case 'typing':
+                        handleTypingIndicator(data);
+                        break;
+                        
+                    case 'message_read':
+                        handleMessageRead(data);
+                        break;
+                        
+                    default:
+                        console.log('Unknown message type:', data.type);
+                }
+            } catch (error) {
+                console.error('Error parsing WebSocket message:', error);
+            }
+        };
+        
+        websocket.onclose = function(event) {
+            console.log('WebSocket disconnected:', event.code, event.reason);
+            
+            // Attempt to reconnect
+            if (reconnectAttempts < 5) {
+                const delay = Math.min(30000, 1000 * Math.pow(2, reconnectAttempts));
+                reconnectAttempts++;
+                
+                console.log(`Reconnecting in ${delay}ms (attempt ${reconnectAttempts})`);
+                
+                reconnectTimeout = setTimeout(() => {
+                    initializeWebSocket();
+                }, delay);
+            } else {
+                console.error('Max reconnection attempts reached');
+                showConnectionError();
+            }
+        };
+        
+        websocket.onerror = function(error) {
+            console.error('WebSocket error:', error);
+        };
+    }
+    
+    function setupEventListeners() {
+        // Conversation list clicks
+        document.getElementById('conversationsList').addEventListener('click', function(e) {
+            const item = e.target.closest('.conversation-item');
+            if (item) {
+                e.preventDefault();
+                const userId = item.getAttribute('data-user-id');
+                const conversationId = item.getAttribute('data-conversation-id');
+                selectConversation(userId, conversationId, item);
+            }
+        });
+        
+        // Team member clicks
+        document.getElementById('teamMembersList').addEventListener('click', function(e) {
+            const item = e.target.closest('.team-member-item');
+            if (item) {
+                e.preventDefault();
+                const userId = item.getAttribute('data-user-id');
+                const userName = item.getAttribute('data-name');
+                startNewConversation(userId, userName);
+            }
+        });
+        
+        // Start new conversation button
+        document.getElementById('startNewFromList').addEventListener('click', function() {
+            document.getElementById('searchUsers').focus();
+        });
+        
+        // Filter buttons
+        document.getElementById('filterAll').addEventListener('click', () => filterConversations('all'));
+        document.getElementById('filterUnread').addEventListener('click', () => filterConversations('unread'));
+        document.getElementById('filterOnline').addEventListener('click', () => filterConversations('online'));
+        
+        // Send message button
+        document.getElementById('sendMessageBtn').addEventListener('click', sendMessage);
+        
+        // Send message on Enter key
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        
+        // Typing indicator
+        document.getElementById('messageInput').addEventListener('input', function() {
+            sendTypingIndicator(true);
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                sendTypingIndicator(false);
+            }, 1000);
+        });
+        
+        // Enable/disable message input based on selection
+        document.getElementById('messageInput').addEventListener('focus', function() {
+            if (!currentConversationUserId) {
+                this.blur();
+                alert('Please select a conversation first');
+            }
+        });
+        
+        // Chat info button
+        document.getElementById('chatInfoBtn').addEventListener('click', showChatInfo);
+        
+        // Close chat info modal
+        document.getElementById('closeChatInfoBtn').addEventListener('click', function() {
+            document.getElementById('chatInfoModal').classList.remove('active');
+        });
+        
+        // Search users
+        document.getElementById('searchUsers').addEventListener('input', debounce(function() {
+            searchUsers(this.value);
+        }, 300));
+    }
+    
+    function selectConversation(userId, conversationId, element) {
+        // Update UI
+        document.querySelectorAll('.conversation-item').forEach(item => {
+            item.classList.remove('conversation-active');
+        });
+        element.classList.add('conversation-active');
+        
+        // Set current conversation
+        currentConversationUserId = userId;
+        currentConversationId = conversationId;
+        
+        // Show chat area, hide no chat view
+        document.getElementById('noChatSelected').style.display = 'none';
+        document.getElementById('chatArea').classList.add('active');
+        
+        // Enable message input
+        document.getElementById('messageInput').disabled = false;
+        document.getElementById('sendMessageBtn').disabled = false;
+        document.getElementById('messageInput').focus();
+        
+        // Load conversation messages
+        loadConversationMessages(userId);
+        
+        // Mark messages as read
+        markMessagesAsRead(userId);
+        
+        // Update conversation list (remove unread badge)
+        const unreadBadge = element.querySelector('.unread-badge');
+        if (unreadBadge) {
+            unreadBadge.remove();
+        }
+        
+        // Update header with user info
+        updateChatHeader(element);
+    }
+    
+    function startNewConversation(userId, userName) {
+        currentConversationUserId = userId;
+        currentConversationId = `conv_{{ user.id }}_${userId}`;
+        
+        // Show chat area
+        document.getElementById('noChatSelected').style.display = 'none';
+        document.getElementById('chatArea').classList.add('active');
+        
+        // Enable message input
+        document.getElementById('messageInput').disabled = false;
+        document.getElementById('sendMessageBtn').disabled = false;
+        
+        // Set up chat header with basic info
+        document.getElementById('chatUserName').textContent = userName;
+        document.getElementById('chatAvatar').textContent = userName.substring(0, 2).toUpperCase();
+        document.getElementById('chatUserRole').textContent = 'Team Member';
+        
+        // Clear messages container
+        const container = document.getElementById('messagesContainer');
+        container.innerHTML = `
+            <div class="text-center py-8 text-gray-500">
+                <i class="fas fa-comment-alt text-3xl mb-4"></i>
+                <p>Start a conversation with ${userName}</p>
+                <p class="text-sm mt-1">Send your first message to begin</p>
+            </div>
+        `;
+        
+        // Focus on message input
+        document.getElementById('messageInput').focus();
+        
+        // Add to conversations list if not already there
+        addToConversationsList(userId, userName);
+    }
+    
+    function loadConversationMessages(userId) {
+        const container = document.getElementById('messagesContainer');
+        container.innerHTML = `
+            <div class="text-center py-8 text-gray-500">
+                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                <p>Loading messages...</p>
+            </div>
+        `;
+        
+        // Fetch messages from API
+        fetch(`/api/messages/conversation/${userId}/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayMessages(data.messages, data.other_user);
+                    lastMessageId = data.messages.length > 0 ? data.messages[data.messages.length - 1].id : null;
+                } else {
+                    showErrorMessage('Failed to load messages: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error loading messages:', error);
+                showErrorMessage('Failed to load messages. Please try again.');
+            });
+    }
+    
+    function displayMessages(messages, otherUser) {
+        const container = document.getElementById('messagesContainer');
+        
+        if (!messages || messages.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <i class="fas fa-comment-alt text-3xl mb-4"></i>
+                    <p>No messages yet</p>
+                    <p class="text-sm mt-1">Start the conversation with ${otherUser.name}</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Group messages by date
+        const groupedMessages = {};
+        messages.forEach(msg => {
+            const date = new Date(msg.timestamp).toDateString();
+            if (!groupedMessages[date]) {
+                groupedMessages[date] = [];
+            }
+            groupedMessages[date].push(msg);
+        });
+        
+        let html = '';
+        
+        Object.keys(groupedMessages).forEach(date => {
+            // Add date separator
+            const dateObj = new Date(date);
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            let dateLabel;
+            if (dateObj.toDateString() === today.toDateString()) {
+                dateLabel = 'Today';
+            } else if (dateObj.toDateString() === yesterday.toDateString()) {
+                dateLabel = 'Yesterday';
+            } else {
+                dateLabel = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            }
+            
+            html += `
+                <div class="message-date-separator">
+                    <span>${dateLabel}</span>
+                </div>
+            `;
+            
+            // Add messages for this date
+            groupedMessages[date].forEach(msg => {
+                const isSent = msg.sender_id == {{ user.id }};
+                const messageTime = new Date(msg.timestamp).toLocaleTimeString('en-US', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+                
+                html += `
+                    <div class="flex mb-4 ${isSent ? 'justify-end' : ''}">
+                        ${!isSent ? `
+                            <div class="w-8 h-8 rounded-full ${msg.avatar_color || 'bg-dark-teal'} flex items-center justify-center text-white text-xs font-bold mr-2">
+                                ${msg.initials || '??'}
+                            </div>
+                        ` : ''}
+                        
+                        <div class="max-w-xs md:max-w-md">
+                            <div class="${isSent ? 'message-sent' : 'message-received'} p-3">
+                                <p>${escapeHtml(msg.content)}</p>
+                            </div>
+                            <div class="flex ${isSent ? 'justify-end' : ''} mt-1">
+                                <span class="text-xs text-gray-500 ${isSent ? 'mr-2' : ''}">
+                                    ${messageTime}
+                                    ${isSent && msg.is_read ? ' • Read' : ''}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        ${isSent ? `
+                            <div class="w-8 h-8 rounded-full bg-golden-orange flex items-center justify-center text-white text-xs font-bold ml-2">
+                                {{ user.get_full_name|default:user.username|slice:"0:2"|upper }}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+        });
+        
+        container.innerHTML = html;
+        
+        // Scroll to bottom
+        container.scrollTop = container.scrollHeight;
+        
+        // Update chat header
+        updateChatHeaderWithUserInfo(otherUser);
+    }
+    
+    function updateChatHeader(element) {
+        // Extract info from conversation element
+        const name = element.querySelector('.font-medium')?.textContent || '';
+        const initials = element.querySelector('.font-bold')?.textContent || '??';
+        const role = element.querySelector('.text-gray-500')?.textContent || 'Team Member';
+        const isOnline = element.querySelector('.online-indicator')?.style.display !== 'none';
+        
+        // Update header
+        document.getElementById('chatUserName').textContent = name;
+        document.getElementById('chatUserRole').textContent = role;
+        document.getElementById('chatAvatar').textContent = initials;
+        document.getElementById('chatAvatar').className = `w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${element.querySelector('.rounded-full').className.split(' ').find(c => c.startsWith('bg-')) || 'bg-dark-teal'}`;
+        
+        // Update online status
+        const onlineStatus = document.getElementById('chatOnlineStatus');
+        onlineStatus.style.display = isOnline ? 'block' : 'none';
+    }
+    
+    function updateChatHeaderWithUserInfo(userInfo) {
+        document.getElementById('chatUserName').textContent = userInfo.name;
+        document.getElementById('chatUserRole').textContent = userInfo.job_position || 'Team Member';
+        document.getElementById('chatAvatar').textContent = userInfo.initials;
+        document.getElementById('chatAvatar').className = `w-10 h-10 rounded-full ${userInfo.avatar_color || 'bg-dark-teal'} flex items-center justify-center text-white font-bold`;
+        
+        const onlineStatus = document.getElementById('chatOnlineStatus');
+        onlineStatus.style.display = userInfo.is_online ? 'block' : 'none';
+    }
+    
+    function sendMessage() {
+        const input = document.getElementById('messageInput');
+        const message = input.value.trim();
+        
+        if (!message || !currentConversationUserId) {
+            return;
+        }
+        
+        // Create message object
+        const messageData = {
+            type: 'direct_message',
+            recipient_id: currentConversationUserId,
+            content: message
+        };
+        
+        // Send via WebSocket
+        if (websocket && websocket.readyState === WebSocket.OPEN) {
+            websocket.send(JSON.stringify(messageData));
+        } else {
+            console.warn('WebSocket not connected, sending via API');
+            sendMessageViaAPI(message);
+        }
+        
+        // Add message to UI immediately (optimistic update)
+        addMessageToUI({
+            sender_id: {{ user.id }},
+            sender_name: '{{ user.get_full_name|default:user.username }}',
+            content: message,
+            timestamp: new Date().toISOString(),
+            is_sent: true,
+            initials: '{{ user.get_full_name|default:user.username|slice:"0:2"|upper }}'
+        });
+        
+        // Clear input
+        input.value = '';
+        input.focus();
+        
+        // Stop typing indicator
+        sendTypingIndicator(false);
+        
+        // Message persistence handled by server via WebSocket; do not double-send via API when WS is connected
+    }
+    
+    function sendMessageViaAPI(content) {
+        fetch('/api/messages/send/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                recipient_id: currentConversationUserId,
+                content: content
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                console.error('Failed to save message:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error sending message via API:', error);
+        });
+    }
+    
+    function sendTypingIndicator(isTyping) {
+        if (!currentConversationUserId || !websocket || websocket.readyState !== WebSocket.OPEN) {
+            return;
+        }
+        
+        websocket.send(JSON.stringify({
+            type: 'typing',
+            recipient_id: currentConversationUserId,
+            is_typing: isTyping
+        }));
+    }
+    
+    function handleIncomingMessage(data) {
+        console.log('Handling incoming message:', data);
+        
+        // Check if this message is for the current conversation
+        const isForCurrentConversation = data.sender_id == currentConversationUserId || 
+                                         data.recipient_id == {{ user.id }};
+        
+        if (data.sender_id == currentConversationUserId) {
+            // Message from the current conversation
+            addMessageToUI({
+                sender_id: data.sender_id,
+                sender_name: data.sender_name,
+                content: data.content,
+                timestamp: data.timestamp,
+                is_sent: false,
+                initials: data.initials || data.sender_name.substring(0, 2).toUpperCase(),
+                avatar_color: data.avatar_color || 'bg-dark-teal'
+            });
+            
+            // Send read receipt
+            sendReadReceipt(data.message_id);
+            
+            // Mark as read in database
+            markMessagesAsRead(data.sender_id);
+            
+        } else {
+            // Message from another conversation
+            showBrowserNotification(data);
+            updateConversationList(data);
+            updateUnreadCount();
+        }
+    }
+    
+    function addMessageToUI(messageData) {
+        const container = document.getElementById('messagesContainer');
+        
+        // Check if container has the "no messages" message
+        if (container.querySelector('.text-center')) {
+            container.innerHTML = '';
+        }
+        
+        // Check if we need a date separator
+        const lastMessage = container.lastElementChild;
+        const messageDate = new Date(messageData.timestamp).toDateString();
+        let needsDateSeparator = true;
+        
+        if (lastMessage && lastMessage.classList.contains('message-date-separator')) {
+            const lastSeparator = lastMessage.querySelector('span').textContent;
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            let expectedSeparator;
+            if (messageDate === today.toDateString()) {
+                expectedSeparator = 'Today';
+            } else if (messageDate === yesterday.toDateString()) {
+                expectedSeparator = 'Yesterday';
+            } else {
+                expectedSeparator = new Date(messageDate).toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric', 
+                    year: 'numeric' 
+                });
+            }
+            
+            if (lastSeparator === expectedSeparator) {
+                needsDateSeparator = false;
+            }
+        }
+        
+        // Add date separator if needed
+        if (needsDateSeparator) {
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            let dateLabel;
+            if (messageDate === today.toDateString()) {
+                dateLabel = 'Today';
+            } else if (messageDate === yesterday.toDateString()) {
+                dateLabel = 'Yesterday';
+            } else {
+                dateLabel = new Date(messageDate).toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric', 
+                    year: 'numeric' 
+                });
+            }
+            
+            const separator = document.createElement('div');
+            separator.className = 'message-date-separator';
+            separator.innerHTML = `<span>${dateLabel}</span>`;
+            container.appendChild(separator);
+        }
+        
+        // Create message element
+        const messageTime = new Date(messageData.timestamp).toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `flex mb-4 ${messageData.is_sent ? 'justify-end' : ''}`;
+        
+        messageDiv.innerHTML = `
+            ${!messageData.is_sent ? `
+                <div class="w-8 h-8 rounded-full ${messageData.avatar_color || 'bg-dark-teal'} flex items-center justify-center text-white text-xs font-bold mr-2">
+                    ${messageData.initials}
+                </div>
+            ` : ''}
+            
+            <div class="max-w-xs md:max-w-md">
+                <div class="${messageData.is_sent ? 'message-sent' : 'message-received'} p-3">
+                    <p>${escapeHtml(messageData.content)}</p>
+                </div>
+                <div class="flex ${messageData.is_sent ? 'justify-end' : ''} mt-1">
+                    <span class="text-xs text-gray-500 ${messageData.is_sent ? 'mr-2' : ''}">
+                        ${messageTime}
+                        ${messageData.is_sent ? ' • Sent' : ''}
+                    </span>
+                </div>
+            </div>
+            
+            ${messageData.is_sent ? `
+                <div class="w-8 h-8 rounded-full bg-golden-orange flex items-center justify-center text-white text-xs font-bold ml-2">
+                    {{ user.get_full_name|default:user.username|slice:"0:2"|upper }}
+                </div>
+            ` : ''}
+        `;
+        
+        container.appendChild(messageDiv);
+        
+        // Scroll to bottom
+        container.scrollTop = container.scrollHeight;
+    }
+    
+    function handleTypingIndicator(data) {
+        if (data.sender_id == currentConversationUserId) {
+            const indicator = document.getElementById('typingIndicator');
+            const typingUser = document.getElementById('typingUser');
+            
+            if (data.is_typing) {
+                typingUser.textContent = data.sender_name;
+                indicator.classList.remove('hidden');
+            } else {
+                indicator.classList.add('hidden');
+            }
+        }
+    }
+    
+    function handleMessageRead(data) {
+        // Update message read status in UI
+        const messages = document.querySelectorAll('.message-sent');
+        const lastMessage = messages[messages.length - 1];
+        if (lastMessage) {
+            const timeElement = lastMessage.parentElement.querySelector('.text-gray-500');
+            if (timeElement && timeElement.textContent.includes('Sent')) {
+                timeElement.textContent = timeElement.textContent.replace('Sent', 'Read');
+            }
+        }
+    }
+    
+    function sendReadReceipt(messageId) {
+        if (websocket && websocket.readyState === WebSocket.OPEN) {
+            websocket.send(JSON.stringify({
+                type: 'message_read',
+                message_id: messageId,
+                recipient_id: currentConversationUserId
+            }));
+        }
+    }
+    
+    function markMessagesAsRead(userId) {
+        fetch(`/api/messages/mark_read/${userId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateUnreadCount();
+            }
+        })
+        .catch(error => {
+            console.error('Error marking messages as read:', error);
+        });
+    }
+    
+    function filterConversations(filter) {
+        const items = document.querySelectorAll('.conversation-item');
+        
+        items.forEach(item => {
+            switch(filter) {
+                case 'all':
+                    item.style.display = 'block';
+                    break;
+                    
+                case 'unread':
+                    const unread = parseInt(item.getAttribute('data-unread') || 0);
+                    item.style.display = unread > 0 ? 'block' : 'none';
+                    break;
+                    
+                case 'online':
+                    const onlineIndicator = item.querySelector('.online-indicator');
+                    const isOnline = onlineIndicator && window.getComputedStyle(onlineIndicator).display !== 'none';
+                    item.style.display = isOnline ? 'block' : 'none';
+                    break;
+            }
+        });
+        
+        // Update active filter button
+        document.querySelectorAll('#chatSidebar button').forEach(btn => {
+            btn.classList.remove('filter-active');
+        });
+        document.getElementById(`filter${filter.charAt(0).toUpperCase() + filter.slice(1)}`).classList.add('filter-active');
+    }
+    
+    function searchUsers(query) {
+        if (query.length < 2) {
+            return;
+        }
+        
+        fetch(`/api/messages/search/?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displaySearchResults(data.results);
+                }
+            })
+            .catch(error => {
+                console.error('Error searching users:', error);
+            });
+    }
+    
+    function displaySearchResults(results) {
+        const container = document.getElementById('conversationsList');
+        
+        if (results.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <p>No users found</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '<div class="p-2 bg-gray-50"><h4 class="text-sm font-medium text-gray-700 mb-2">Search Results</h4></div>';
+        
+        results.forEach(user => {
+            html += `
+                <div class="p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition search-result-item" 
+                     data-user-id="${user.id}"
+                     data-name="${user.name}">
+                    <div class="flex items-center">
+                        <div class="relative">
+                            <div class="w-10 h-10 rounded-full ${user.avatar_color || 'bg-dark-teal'} flex items-center justify-center text-white text-sm font-bold">
+                                ${user.name.substring(0, 2).toUpperCase()}
+                            </div>
+                        </div>
+                        <div class="ml-3 flex-1">
+                            <h4 class="text-sm font-medium text-ink-black">${user.name}</h4>
+                            <p class="text-xs text-gray-500">${user.job_position || 'Team Member'}</p>
+                        </div>
+                        <button class="px-3 py-1 bg-dark-teal text-white text-xs rounded hover:bg-dark-cyan start-chat-btn">
+                            Message
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+        
+        // Add event listeners to search result items
+        document.querySelectorAll('.search-result-item .start-chat-btn').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const item = this.closest('.search-result-item');
+                const userId = item.getAttribute('data-user-id');
+                const userName = item.getAttribute('data-name');
+                startNewConversation(userId, userName);
+            });
+        });
+    }
+    
+    function addToConversationsList(userId, userName) {
+        const container = document.getElementById('conversationsList');
+        
+        // Check if already in list
+        const existing = Array.from(container.querySelectorAll('.conversation-item')).find(item => 
+            item.getAttribute('data-user-id') == userId
+        );
+        
+        if (existing) {
+            return;
+        }
+        
+        const initials = userName.substring(0, 2).toUpperCase();
+        const colorClass = 'bg-dark-teal'; // You can make this dynamic
+        
+        const conversationHtml = `
+            <div class="p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition conversation-item" 
+                 data-user-id="${userId}"
+                 data-conversation-id="conv_{{ user.id }}_${userId}"
+                 data-unread="0">
+                <div class="flex items-start">
+                    <div class="relative">
+                        <div class="w-12 h-12 rounded-full ${colorClass} flex items-center justify-center text-white font-bold">
+                            ${initials}
+                        </div>
+                    </div>
+                    <div class="ml-3 flex-1">
+                        <div class="flex justify-between items-start">
+                            <h3 class="font-medium text-ink-black">${userName}</h3>
+                            <span class="text-xs text-gray-500">Just now</span>
+                        </div>
+                        <p class="text-sm text-gray-600 truncate">Start a conversation...</p>
+                        <div class="flex justify-between items-center mt-1">
+                            <span class="text-xs text-gray-500">Team Member</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        container.insertAdjacentHTML('afterbegin', conversationHtml);
+    }
+    
+    function updateConversationList(messageData) {
+        const container = document.getElementById('conversationsList');
+        const items = container.querySelectorAll('.conversation-item');
+        
+        // Find conversation with this user
+        let conversationItem = null;
+        for (const item of items) {
+            if (item.getAttribute('data-user-id') == messageData.sender_id) {
+                conversationItem = item;
+                break;
+            }
+        }
+        
+        if (conversationItem) {
+            // Update last message
+            const lastMessageElement = conversationItem.querySelector('.text-gray-600');
+            if (lastMessageElement) {
+                lastMessageElement.textContent = messageData.content.length > 40 ? 
+                    messageData.content.substring(0, 40) + '...' : 
+                    messageData.content;
+            }
+            
+            // Update time
+            const timeElement = conversationItem.querySelector('.text-xs.text-gray-500');
+            if (timeElement) {
+                timeElement.textContent = 'Just now';
+            }
+            
+            // Update unread count
+            const currentUnread = parseInt(conversationItem.getAttribute('data-unread') || 0);
+            conversationItem.setAttribute('data-unread', currentUnread + 1);
+            
+            let unreadBadge = conversationItem.querySelector('.unread-badge');
+            if (unreadBadge) {
+                unreadBadge.textContent = currentUnread + 1;
+            } else {
+                const badge = document.createElement('div');
+                badge.className = 'unread-badge';
+                badge.textContent = '1';
+                conversationItem.querySelector('.flex.justify-between').appendChild(badge);
+            }
+            
+            // Move to top
+            container.prepend(conversationItem);
+        } else {
+            // Create new conversation item
+            addToConversationsList(messageData.sender_id, messageData.sender_name);
+        }
+    }
+    
+    function updateUnreadCount() {
+        fetch('/api/messages/unread_count/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const unreadCount = data.unread_count || 0;
+                    
+                    // Update header badge
+                    const badgeElement = document.querySelector('header .relative .bg-golden-orange');
+                    if (unreadCount > 0) {
+                        if (badgeElement) {
+                            badgeElement.textContent = unreadCount;
+                        } else {
+                            // Create badge if it doesn't exist
+                            const envelopeIcon = document.querySelector('header .fa-envelope').closest('a, button');
+                            if (envelopeIcon) {
+                                const badge = document.createElement('span');
+                                badge.className = 'absolute -top-1 -right-1 bg-golden-orange text-white text-xs w-5 h-5 flex items-center justify-center rounded-full';
+                                badge.textContent = unreadCount;
+                                envelopeIcon.parentElement.classList.add('relative');
+                                envelopeIcon.parentElement.appendChild(badge);
+                            }
+                        }
+                    } else if (badgeElement) {
+                        badgeElement.remove();
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error updating unread count:', error);
+            });
+    }
+    
+    function showChatInfo() {
+        if (!currentConversationUserId) {
+            return;
+        }
+        
+        // Fetch user info
+        fetch(`/api/users/${currentConversationUserId}/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const modal = document.getElementById('chatInfoModal');
+                    document.getElementById('infoName').textContent = data.name;
+                    document.getElementById('infoJobPosition').textContent = data.job_position || 'Team Member';
+                    document.getElementById('infoEmail').textContent = data.email || 'N/A';
+                    document.getElementById('infoDepartment').textContent = data.department || 'N/A';
+                    document.getElementById('infoProjects').textContent = data.projects || 'N/A';
+                    document.getElementById('infoAvatar').textContent = data.initials || '??';
+                    
+                    // Set status
+                    const statusElement = document.getElementById('infoStatus');
+                    if (data.is_online) {
+                        statusElement.textContent = 'Online';
+                        statusElement.className = 'text-xs px-2 py-1 rounded-full bg-green-100 text-green-800';
+                    } else {
+                        statusElement.textContent = 'Offline';
+                        statusElement.className = 'text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-800';
+                        document.getElementById('infoLastSeen').textContent = data.last_seen ? `Last seen ${data.last_seen}` : '';
+                    }
+                    
+                    modal.classList.add('active');
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching user info:', error);
+                alert('Failed to load user information');
+            });
+    }
+    
+    function showBrowserNotification(messageData) {
+        // Check if notifications are allowed
+        if (!("Notification" in window)) {
+            return;
+        }
+        
+        // Request permission if needed
+        if (Notification.permission === "default") {
+            Notification.requestPermission();
+        }
+        
+        // Show notification
+        if (Notification.permission === "granted") {
+            new Notification(`New message from ${messageData.sender_name}`, {
+                body: messageData.content.length > 100 ? 
+                      messageData.content.substring(0, 100) + '...' : 
+                      messageData.content,
+                icon: '/static/favicon.ico',
+                tag: `message_${messageData.message_id}`
+            });
+        }
+    }
+    
+    function showConnectionError() {
+        const container = document.getElementById('messagesContainer');
+        if (container) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4';
+            errorDiv.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    <span>Connection lost. Please refresh the page.</span>
+                </div>
+            `;
+            container.prepend(errorDiv);
+        }
+    }
+    
+    function showErrorMessage(message) {
+        const container = document.getElementById('messagesContainer');
+        container.innerHTML = `
+            <div class="text-center py-8 text-gray-500">
+                <i class="fas fa-exclamation-triangle text-2xl mb-2"></i>
+                <p>${message}</p>
+                <button onclick="loadConversationMessages(${currentConversationUserId})" class="mt-2 px-4 py-2 bg-dark-teal text-white rounded hover:bg-dark-cyan">
+                    Try Again
+                </button>
+            </div>
+        `;
+    }
+    
+    // Utility functions
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    function getCsrfToken() {
+        const cookieValue = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('csrftoken='))
+            ?.split('=')[1];
+        return cookieValue || '';
+    }
+    
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+</script>
+{% endblock %}
+    
+    

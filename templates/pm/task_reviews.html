@@ -1,0 +1,440 @@
+{% extends 'pm/base.html' %}
+
+{% block page_title %}Task Reviews & Approvals{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
+        <div class="flex flex-wrap gap-2">
+            <button id="filterPending" class="filter-active px-3 py-1 rounded-full text-sm transition bg-dark-teal text-white">Pending Review</button>
+            <button id="filterAll" class="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200 transition">All Reviews</button>
+            <button id="filterApproved" class="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200 transition">Approved</button>
+            <button id="filterChanges" class="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200 transition">Changes Requested</button>
+        </div>
+        
+        <div class="grid grid-cols-3 gap-4">
+            <div class="text-center">
+                <p class="text-2xl font-bold text-ink-black">{{ pending_count }}</p>
+                <p class="text-sm text-gray-500">Pending</p>
+            </div>
+            <div class="text-center">
+                <p class="text-2xl font-bold text-dark-cyan">{{ approved_count }}</p>
+                <p class="text-sm text-gray-500">Approved</p>
+            </div>
+            <div class="text-center">
+                <p class="text-2xl font-bold text-rusty-spice">{{ changes_requested_count }}</p>
+                <p class="text-sm text-gray-500">Revisions</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tasks Under Review -->
+<div class="space-y-6">
+    {% for task in review_tasks %}
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden task-review-card" data-status="pending" data-id="{{ task.id }}">
+        <div class="p-6">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-ink-black">{{ task.title }}</h3>
+                    <div class="flex items-center mt-1 space-x-3">
+                        <span class="text-xs priority-{{ task.priority }} px-2 py-1 rounded-full">{{ task.get_priority_display }} Priority</span>
+                        <span class="text-xs status-pending px-2 py-1 rounded-full">Pending Review</span>
+                        <span class="text-xs text-gray-500">#TASK-{{ task.id }}</span>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm font-medium">
+                        {% if task.assigned_to %}
+                            {{ task.assigned_to.user.get_full_name }}
+                        {% else %}
+                            Unassigned
+                        {% endif %}
+                    </p>
+                    <p class="text-xs text-gray-500">
+                        {% if task.assigned_to %}
+                            {{ task.assigned_to.job_position }}
+                        {% else %}
+                            Not assigned
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Task Details -->
+                <div>
+                    <h4 class="font-medium text-ink-black mb-2">Task Details</h4>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Project:</span>
+                            <span class="font-medium">{{ task.project.name }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Sprint:</span>
+                            <span class="font-medium">{{ task.sprint.name|default:"No sprint" }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Due Date:</span>
+                            <span class="font-medium {% if task.due_date < today %}text-rusty-spice{% endif %}">
+                                {{ task.due_date|date:"M d, Y" }}
+                                {% if task.due_date < today and task.status != 'done' %}(Overdue){% endif %}
+                            </span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Estimated Hours:</span>
+                            <span class="font-medium">{{ task.estimated_hours|floatformat:1 }}h</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Actual Hours:</span>
+                            <span class="font-medium">{{ task.actual_hours|floatformat:1 }}h</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Progress Summary -->
+                <div>
+                    <h4 class="font-medium text-ink-black mb-2">Progress Summary</h4>
+                    <div class="space-y-3">
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span>Completion</span>
+                                <span>{{ task.progress }}%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="bg-dark-cyan h-2 rounded-full" style="width: {{ task.progress }}%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-sm">
+                            <p class="font-medium mb-1">Work Completed:</p>
+                            <ul class="list-disc list-inside text-gray-600 space-y-1">
+                                {% if task.description %}
+                                    <li>{{ task.description|truncatechars:50 }}</li>
+                                {% else %}
+                                    <li>No description provided</li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Developer Notes -->
+            <div class="mt-4 p-4 bg-gray-50 rounded-lg">
+                <h4 class="font-medium text-ink-black mb-2">Developer Notes</h4>
+                <p class="text-sm text-gray-600">
+                    {% with comments=task.comments.all %}
+                        {% if comments %}
+                            {% for comment in comments|slice:":1" %}
+                                {{ comment.content|truncatechars:200 }}
+                            {% endfor %}
+                        {% else %}
+                            No developer notes provided.
+                        {% endif %}
+                    {% endwith %}
+                </p>
+            </div>
+            
+            <!-- Attachments -->
+            <div class="mt-4">
+                <h4 class="font-medium text-ink-black mb-2">Attachments</h4>
+                <div class="flex space-x-3">
+                    {% with files=task.files.all %}
+                        {% if files %}
+                            {% for file in files %}
+                            <div class="flex items-center p-2 border border-gray-200 rounded-lg">
+                                <i class="fas fa-file-code text-dark-teal mr-2"></i>
+                                <a href="{{ file.file.url }}" class="text-sm text-dark-teal hover:underline" download target="_blank">{{ file.name|truncatechars:40 }}</a>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="flex items-center p-2 border border-gray-200 rounded-lg">
+                                <i class="fas fa-file text-gray-400 mr-2"></i>
+                                <span class="text-sm">No attachments</span>
+                            </div>
+                        {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+            
+            <!-- Approval Actions -->
+            <div class="mt-6 pt-4 border-t border-gray-200">
+                <div class="flex justify-between items-center">
+                    <div class="text-sm text-gray-500">
+                        Submitted for review: {{ task.updated_at|timesince }} ago
+                    </div>
+                    <div class="flex space-x-3">
+                        <button class="px-4 py-2 bg-dark-teal text-white rounded-lg hover:bg-dark-cyan transition flex items-center approve-task" 
+                                data-task-id="{{ task.id }}"
+                                data-task-title="{{ task.title }}">
+                            <i class="fas fa-check mr-2"></i>
+                            Approve Task
+                        </button>
+                        <button class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition flex items-center request-changes" 
+                                data-task-id="{{ task.id }}"
+                                data-task-title="{{ task.title }}"
+                                data-assignee="{% if task.assigned_to %}{{ task.assigned_to.user.get_full_name }}{% else %}Unassigned{% endif %}">
+                            <i class="fas fa-redo mr-2"></i>
+                            Request Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="bg-white rounded-xl shadow-sm p-6 text-center">
+        <p class="text-gray-500">No tasks are currently under review.</p>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Recently Approved Tasks -->
+{% if recently_approved %}
+<div class="mt-8">
+    <h3 class="text-lg font-semibold text-ink-black mb-4">Recently Approved Tasks</h3>
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assignee</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Approved On</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for task in recently_approved %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-ink-black">{{ task.title }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">
+                                {% if task.assigned_to %}
+                                    {{ task.assigned_to.user.get_full_name }}
+                                {% else %}
+                                    Unassigned
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ task.project.name }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ task.completed_at|date:"M d, Y" }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Approved
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// API URL templates (replace '0' with taskId)
+const approveTaskApiUrl = "{% url 'approve_task_api' 0 %}";
+const requestChangesApiUrl = "{% url 'request_task_changes_api' 0 %}";
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Filter functionality
+        const filterButtons = document.querySelectorAll('#filterPending, #filterAll, #filterApproved, #filterChanges');
+        const taskCards = document.querySelectorAll('.task-review-card');
+        
+        filterButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // Remove active class from all buttons
+                filterButtons.forEach(btn => {
+                    btn.classList.remove('bg-dark-teal', 'text-white', 'filter-active');
+                    btn.classList.add('bg-gray-100', 'text-gray-700');
+                });
+                
+                // Add active class to clicked button
+                this.classList.remove('bg-gray-100', 'text-gray-700');
+                this.classList.add('bg-dark-teal', 'text-white', 'filter-active');
+                
+                const filterType = this.id.replace('filter', '').toLowerCase();
+                
+                // Show/hide tasks based on filter
+                taskCards.forEach(card => {
+                    if (filterType === 'all' || card.dataset.status === filterType) {
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        });
+        
+        // Approve task functionality
+        document.querySelectorAll('.approve-task').forEach(button => {
+            button.addEventListener('click', function() {
+                const taskId = this.dataset.taskId;
+                const taskTitle = this.dataset.taskTitle;
+                
+                // Set confirmation modal content
+                document.getElementById('confirmationTitle').textContent = 'Approve Task';
+                document.getElementById('confirmationMessage').textContent = `Are you sure you want to approve task "${taskTitle}"?`;
+                
+                // Set up confirm action
+                const confirmBtn = document.getElementById('confirmActionBtn');
+                confirmBtn.onclick = function() {
+                    approveTask(taskId);
+                };
+                
+                // Show confirmation modal
+                showModal(document.getElementById('confirmationModal'));
+            });
+        });
+        
+        // Request changes functionality
+        document.querySelectorAll('.request-changes').forEach(button => {
+            button.addEventListener('click', function() {
+                const taskId = this.dataset.taskId;
+                const taskTitle = this.dataset.taskTitle;
+                const assignee = this.dataset.assignee;
+                
+                // Set request changes modal content
+                document.getElementById('changeTaskId').value = taskId;
+                document.getElementById('changeTaskTitle').textContent = taskTitle;
+                document.getElementById('changeTaskAssignee').textContent = assignee;
+                
+                // Show request changes modal
+                showModal(document.getElementById('requestChangesModal'));
+            });
+        });
+        
+        // Handle request changes form submission
+        document.getElementById('requestChangesForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const taskId = document.getElementById('changeTaskId').value;
+            const feedback = document.getElementById('changeFeedback').value;
+            
+            if (!feedback.trim()) {
+                alert('Please provide feedback about what changes are required.');
+                return;
+            }
+            
+            // Send request to server
+                fetch(requestChangesApiUrl.replace('0', taskId), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({
+                        task_id: taskId,
+                        feedback: feedback
+                    })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success modal
+                    document.getElementById('successTitle').textContent = 'Changes Requested';
+                    document.getElementById('successMessage').textContent = data.message;
+                    showModal(document.getElementById('successModal'));
+                    
+                    // Hide request changes modal
+                    hideModal(document.getElementById('requestChangesModal'));
+                    
+                    // Reload page after delay to show updated status
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while requesting changes.');
+            });
+        });
+        
+        // Handle task approval
+        function approveTask(taskId) {
+                fetch(approveTaskApiUrl.replace('0', taskId), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({ task_id: taskId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success modal
+                    document.getElementById('successTitle').textContent = 'Task Approved';
+                    document.getElementById('successMessage').textContent = data.message;
+                    showModal(document.getElementById('successModal'));
+                    
+                    // Hide confirmation modal
+                    hideModal(document.getElementById('confirmationModal'));
+                    
+                    // Remove task from view
+                    const taskCard = document.querySelector(`[data-id="${taskId}"]`);
+                    if (taskCard) {
+                        taskCard.style.opacity = '0.5';
+                        setTimeout(() => {
+                            taskCard.remove();
+                        }, 1000);
+                    }
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while approving the task.');
+            });
+        }
+        
+        // Helper function to get CSRF token
+        function getCsrfToken() {
+            const name = 'csrftoken';
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        // Close success modal button
+        document.getElementById('closeSuccessBtn').addEventListener('click', function() {
+            hideModal(document.getElementById('successModal'));
+        });
+        
+        // Cancel changes button
+        document.getElementById('cancelChangesBtn').addEventListener('click', function() {
+            hideModal(document.getElementById('requestChangesModal'));
+        });
+        
+        // Cancel confirmation button
+        document.getElementById('confirmCancelBtn').addEventListener('click', function() {
+            hideModal(document.getElementById('confirmationModal'));
+        });
+    });
+</script>
+{% endblock %}

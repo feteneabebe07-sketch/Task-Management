@@ -1,0 +1,1374 @@
+
+<!-- templates/pm/base.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Management - {% block title %}PM Dashboard{% endblock %}</title>
+    {% load static %}
+    <!-- Provide CSRF token meta and helper early so scripts can use it -->
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <script>
+        function getCsrfToken() {
+            try {
+                const meta = document.querySelector('meta[name="csrf-token"]') || document.querySelector('meta[name="csrfmiddlewaretoken"]');
+                if (meta && meta.getAttribute('content')) return meta.getAttribute('content');
+                const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+                if (input && input.value) return input.value;
+                const match = document.cookie.match(new RegExp('(^|;)\\s*' + 'csrftoken' + '\\s*=\\s*([^;]+)'));
+                return match ? match.pop() : '';
+            } catch (e) {
+                return '';
+            }
+        }
+        window.getCsrfToken = getCsrfToken;
+        window.getCSRFToken = getCsrfToken;
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'ink-black': '#001219',
+                        'dark-teal': '#005f73',
+                        'dark-cyan': '#0a9396',
+                        'pearl-aqua': '#94d2bd',
+                        'vanilla-custard': '#e9d8a6',
+                        'golden-orange': '#ee9b00',
+                        'burnt-caramel': '#ca6702',
+                        'rusty-spice': '#bb3e03',
+                        'oxidized-iron': '#ae2012',
+                        'brown-red': '#9b2226',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Enhanced global styles matching admin base */
+        :root {
+            --sidebar-width: 280px;
+            --header-height: 70px;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f8f9fa 0%, #edf2f7 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+        }
+        
+        .sidebar {
+            background: linear-gradient(180deg, #001219 0%, #005f73 100%);
+            box-shadow: 4px 0 20px rgba(0, 31, 41, 0.15);
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .sidebar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(180deg, #ee9b00, #94d2bd, #005f73);
+            opacity: 0.7;
+        }
+        
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(233, 216, 166, 0.2);
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 95, 115, 0.15);
+            border-color: rgba(238, 155, 0, 0.3);
+        }
+        
+        .active-tab {
+            background: linear-gradient(90deg, rgba(238, 155, 0, 0.15) 0%, rgba(148, 210, 189, 0.1) 100%);
+            border-left: 4px solid #ee9b00;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .active-tab::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 3px;
+            height: 100%;
+            background: linear-gradient(180deg, #94d2bd, #005f73);
+            opacity: 0.6;
+        }
+        
+        .nav-item-hover:hover {
+            background: linear-gradient(90deg, rgba(148, 210, 189, 0.15) 0%, rgba(0, 95, 115, 0.1) 100%);
+            transform: translateX(5px);
+        }
+        
+        .nav-item-hover:hover i {
+            transform: scale(1.1);
+            color: #e9d8a6;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 18, 25, 0.7);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: 16px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 50px rgba(0, 95, 115, 0.25);
+            border: 1px solid rgba(233, 216, 166, 0.3);
+        }
+        
+        .header-gradient {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-bottom: 1px solid rgba(233, 216, 166, 0.3);
+            box-shadow: 0 2px 15px rgba(0, 95, 115, 0.08);
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        
+        .status-active {
+            background: linear-gradient(135deg, #94d2bd, #0a9396);
+            box-shadow: 0 0 10px rgba(148, 210, 189, 0.5);
+        }
+        
+        .status-inactive {
+            background: linear-gradient(135deg, #ee9b00, #ca6702);
+            box-shadow: 0 0 10px rgba(238, 155, 0, 0.3);
+        }
+        
+        .status-pending {
+            background-color: rgba(238, 155, 0, 0.1);
+            color: #ee9b00;
+        }
+        
+        .status-approved {
+            background-color: rgba(148, 210, 189, 0.1);
+            color: #94d2bd;
+        }
+        
+        .status-changes-requested {
+            background-color: rgba(187, 62, 3, 0.1);
+            color: #bb3e03;
+        }
+        
+        .filter-active {
+            background-color: rgba(0, 95, 115, 0.1);
+            color: #005f73;
+        }
+        
+        .user-avatar {
+            background: linear-gradient(135deg, #005f73 0%, #0a9396 100%);
+            box-shadow: 0 4px 15px rgba(0, 95, 115, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .user-avatar:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(238, 155, 0, 0.4);
+        }
+        
+        .notification-badge {
+            background: linear-gradient(135deg, #ee9b00 0%, #ca6702 100%);
+            box-shadow: 0 2px 8px rgba(238, 155, 0, 0.3);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(238, 155, 0, 0.4); }
+            70% { box-shadow: 0 0 0 8px rgba(238, 155, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(238, 155, 0, 0); }
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #ee9b00 0%, #ca6702 100%);
+            box-shadow: 0 4px 15px rgba(238, 155, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #ca6702 0%, #bb3e03 100%);
+            box-shadow: 0 6px 20px rgba(238, 155, 0, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #005f73 0%, #0a9396 100%);
+            box-shadow: 0 4px 15px rgba(0, 95, 115, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #0a9396 0%, #005f73 100%);
+            box-shadow: 0 6px 20px rgba(0, 95, 115, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        .table-row-hover:hover {
+            background: linear-gradient(90deg, rgba(233, 216, 166, 0.1) 0%, rgba(238, 155, 0, 0.05) 100%);
+        }
+        
+        .task-status-todo {
+            border-left: 4px solid #ee9b00;
+            background: linear-gradient(90deg, rgba(238, 155, 0, 0.05) 0%, rgba(238, 155, 0, 0.02) 100%);
+        }
+        
+        .task-status-progress {
+            border-left: 4px solid #0a9396;
+            background: linear-gradient(90deg, rgba(10, 147, 150, 0.05) 0%, rgba(10, 147, 150, 0.02) 100%);
+        }
+        
+        .task-status-review {
+            border-left: 4px solid #bb3e03;
+            background: linear-gradient(90deg, rgba(187, 62, 3, 0.05) 0%, rgba(187, 62, 3, 0.02) 100%);
+        }
+        
+        .task-status-done {
+            border-left: 4px solid #94d2bd;
+            background: linear-gradient(90deg, rgba(148, 210, 189, 0.05) 0%, rgba(148, 210, 189, 0.02) 100%);
+        }
+        
+        .priority-high {
+            background: linear-gradient(135deg, rgba(187, 62, 3, 0.15), rgba(174, 32, 18, 0.1));
+            color: #bb3e03;
+            border: 1px solid rgba(187, 62, 3, 0.2);
+        }
+        
+        .priority-medium {
+            background: linear-gradient(135deg, rgba(238, 155, 0, 0.15), rgba(202, 103, 2, 0.1));
+            color: #ca6702;
+            border: 1px solid rgba(238, 155, 0, 0.2);
+        }
+        
+        .priority-low {
+            background: linear-gradient(135deg, rgba(148, 210, 189, 0.15), rgba(10, 147, 150, 0.1));
+            color: #0a9396;
+            border: 1px solid rgba(148, 210, 189, 0.2);
+        }
+        
+        .form-input {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border: 2px solid rgba(233, 216, 166, 0.5);
+            transition: all 0.3s ease;
+        }
+        
+        .form-input:focus {
+            border-color: #ee9b00;
+            box-shadow: 0 0 0 3px rgba(238, 155, 0, 0.1);
+            background: #ffffff;
+        }
+        
+        .form-select {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border: 2px solid rgba(233, 216, 166, 0.5);
+            transition: all 0.3s ease;
+        }
+        
+        .form-select:focus {
+            border-color: #005f73;
+            box-shadow: 0 0 0 3px rgba(0, 95, 115, 0.1);
+        }
+        
+        /* Chat area styles */
+        #chatArea {
+            display: none;
+        }
+        
+        #chatArea.active {
+            display: flex;
+            flex: 1;
+            flex-direction: column;
+        }
+        
+        #noChatSelected {
+            display: flex;
+            flex: 1;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #noChatSelected.hidden {
+            display: none !important;
+        }
+        
+        /* Toast notifications */
+        .toast-success {
+            background: linear-gradient(90deg, rgba(148, 210, 189, 0.9), rgba(10, 147, 150, 0.9));
+            border-left: 4px solid #94d2bd;
+            color: white;
+        }
+        
+        .toast-error {
+            background: linear-gradient(90deg, rgba(238, 155, 0, 0.9), rgba(202, 103, 2, 0.9));
+            border-left: 4px solid #bb3e03;
+            color: white;
+        }
+        
+        .toast-info {
+            background: linear-gradient(90deg, rgba(0, 95, 115, 0.9), rgba(10, 147, 150, 0.9));
+            border-left: 4px solid #005f73;
+            color: white;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: -100%;
+                top: 0;
+                bottom: 0;
+                z-index: 50;
+                transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                width: 280px !important;
+                box-shadow: 0 0 40px rgba(0, 0, 0, 0.3);
+            }
+            
+            .sidebar.active {
+                left: 0;
+            }
+            
+            .sidebar-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 18, 25, 0.7);
+                backdrop-filter: blur(5px);
+                z-index: 40;
+                display: none;
+                animation: fadeIn 0.3s ease;
+            }
+            
+            .sidebar-overlay.active {
+                display: block;
+            }
+            
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            
+            .modal-content {
+                width: 95%;
+                max-height: 85vh;
+            }
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(233, 216, 166, 0.1);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #94d2bd, #005f73);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #ee9b00, #ca6702);
+        }
+        
+        /* Loading animation */
+        .loading-spinner {
+            border: 3px solid rgba(233, 216, 166, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #ee9b00;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-vanilla-custard/10">
+    <!-- Mobile Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-3 max-w-sm"></div>
+    
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <div class="sidebar w-64 text-white flex flex-col md:relative z-40">
+            <!-- Sidebar Header -->
+            <div class="p-6 flex justify-between items-center border-b border-dark-teal/30">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-golden-orange to-dark-teal flex items-center justify-center shadow-lg">
+                        <i class="fas fa-project-diagram text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-pearl-aqua">ProjectFlow</h1>
+                        <p class="text-xs text-pearl-aqua/70 mt-1 hidden md:block">PM Dashboard</p>
+                    </div>
+                </div>
+                <button id="closeSidebar" class="md:hidden text-pearl-aqua hover:text-vanilla-custard transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <!-- Navigation -->
+            <nav class="flex-1 px-4 py-6">
+                <p class="text-xs uppercase tracking-wider text-pearl-aqua/50 px-4 mb-4">Navigation</p>
+                <ul class="space-y-2">
+                    <li>
+                        <a href="{% url 'pm_dashboard' %}" 
+                           class="flex items-center px-4 py-3 rounded-xl nav-item-hover transition-all duration-300 {% if request.resolver_match.url_name == 'pm_dashboard' or request.path == '/' %}active-tab text-golden-orange{% else %}text-pearl-aqua hover:text-vanilla-custard{% endif %}">
+                            <i class="fas fa-tachometer-alt mr-3 w-6 text-center text-lg"></i>
+                            <span class="font-medium">Dashboard</span>
+                            <i class="fas fa-chevron-right ml-auto text-xs opacity-50 {% if request.resolver_match.url_name == 'pm_dashboard' %}text-golden-orange{% endif %}"></i>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'pm_projects' %}" 
+                           class="flex items-center px-4 py-3 rounded-xl nav-item-hover transition-all duration-300 {% if request.resolver_match.url_name == 'pm_projects' or request.resolver_match.url_name == 'pm_project_detail' %}active-tab text-golden-orange{% else %}text-pearl-aqua hover:text-vanilla-custard{% endif %}">
+                            <i class="fas fa-project-diagram mr-3 w-6 text-center text-lg"></i>
+                            <span class="font-medium">My Projects</span>
+                            {% if request.resolver_match.url_name == 'pm_projects' or request.resolver_match.url_name == 'pm_project_detail' %}
+                            <span class="ml-auto bg-golden-orange/20 text-golden-orange text-xs px-2 py-1 rounded-full">Active</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'pm_team' %}" 
+                           class="flex items-center px-4 py-3 rounded-xl nav-item-hover transition-all duration-300 {% if request.resolver_match.url_name == 'pm_team' %}active-tab text-golden-orange{% else %}text-pearl-aqua hover:text-vanilla-custard{% endif %}">
+                            <i class="fas fa-users mr-3 w-6 text-center text-lg"></i>
+                            <span class="font-medium">Team</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a href="{% url 'pm_tasks' %}" 
+                           class="flex items-center px-4 py-3 rounded-xl nav-item-hover transition-all duration-300 {% if request.resolver_match.url_name == 'pm_tasks' %}active-tab text-golden-orange{% else %}text-pearl-aqua hover:text-vanilla-custard{% endif %}">
+                            <i class="fas fa-tasks mr-3 w-6 text-center text-lg"></i>
+                            <span class="font-medium">Tasks</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'pm_messages' %}" 
+                           class="flex items-center px-4 py-3 rounded-xl nav-item-hover transition-all duration-300 {% if request.resolver_match.url_name == 'pm_messages' %}active-tab text-golden-orange{% else %}text-pearl-aqua hover:text-vanilla-custard{% endif %}">
+                            <i class="fas fa-comments mr-3 w-6 text-center text-lg"></i>
+                            <span class="font-medium">Messages</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </nav>
+            
+            <!-- Sidebar Footer -->
+            <div class="p-4 border-t border-dark-teal/30">
+                <div class="text-center">
+                    <a href="{% url 'logout' %}" class="flex items-center justify-center px-4 py-2 bg-gradient-to-r from-rusty-spice/20 to-oxidized-iron/20 hover:from-rusty-spice/30 hover:to-oxidized-iron/30 text-pearl-aqua rounded-lg transition-all duration-300 border border-rusty-spice/30 hover:border-rusty-spice/50">
+                        <i class="fas fa-sign-out-alt mr-2"></i>
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Header -->
+            <header class="header-gradient py-4 px-6 flex justify-between items-center sticky top-0 z-30">
+                <div class="flex items-center space-x-4">
+                    <button id="sidebarToggle" class="text-dark-teal hover:text-golden-orange transition-colors transform hover:scale-110">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                    <div>
+                        <h2 class="text-xl font-bold text-ink-black">
+                            {% block header_title %}{% endblock %}
+                        </h2>
+                        <p class="text-sm text-dark-cyan mt-1 hidden md:block">
+                            <i class="fas fa-clock mr-1"></i>
+                            {{ current_date|date:"l, F j, Y" }}
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <!-- Search -->
+                    <div class="relative hidden md:block">
+                        <input type="text" 
+                               placeholder="Search tasks, projects..." 
+                               class="pl-10 pr-4 py-2 form-input rounded-full w-64 focus:w-80 transition-all duration-300">
+                        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-dark-cyan"></i>
+                    </div>
+                    
+                    <!-- Notifications -->
+                    <div class="relative">
+                        <button class="text-dark-teal hover:text-golden-orange transition-colors p-2 hover:bg-golden-orange/10 rounded-full" id="notificationsBtn">
+                            <i class="fas fa-bell text-xl"></i>
+                        </button>
+                        <span class="notification-badge absolute -top-1 -right-1 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full text-xs font-bold" id="notificationCount">
+                            {% with notification_count=user.notifications.filter.is_read.count %}
+                                {{ notification_count|default:"0" }}
+                            {% endwith %}
+                        </span>
+                    </div>
+                    
+                    <!-- Quick Task Button -->
+                    <button id="newTaskBtn" class="btn-primary px-4 py-2 rounded-lg flex items-center text-white">
+                        <i class="fas fa-plus mr-2"></i>
+                        <span>New Task</span>
+                    </button>
+                    
+                    <!-- User Menu -->
+                    <div class="relative group">
+                        <div class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-vanilla-custard/20 transition-colors">
+                            <div class="user-avatar w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-md">
+                                {{ user.first_name|first|upper }}{{ user.last_name|first|upper }}
+                            </div>
+                            <div class="hidden md:block">
+                                <p class="text-sm font-medium text-ink-black">{{ user.get_full_name|default:"Project Manager" }}</p>
+                                <p class="text-xs text-dark-cyan">Project Manager</p>
+                            </div>
+                            <i class="fas fa-chevron-down text-dark-cyan text-xs"></i>
+                        </div>
+                        
+                        <!-- Dropdown Menu -->
+                        <div class="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-2xl border border-vanilla-custard/30 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 z-40">
+                            <div class="p-4 border-b border-vanilla-custard/20">
+                                <p class="text-sm font-medium text-ink-black">{{ user.get_full_name }}</p>
+                                <p class="text-xs text-dark-cyan truncate">{{ user.email }}</p>
+                            </div>
+                            <div class="p-2">
+                                
+                                
+                            </div>
+                            <div class="p-2 border-t border-vanilla-custard/20">
+                                <a href="{% url 'logout' %}" class="flex items-center px-3 py-2 text-sm text-rusty-spice hover:bg-rusty-spice/10 rounded-lg">
+                                    <i class="fas fa-sign-out-alt mr-3"></i>
+                                    <span>Logout</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Main Content Area -->
+            <main class="flex-1 overflow-y-auto p-6 bg-gradient-to-b from-white/50 to-vanilla-custard/5">
+                <!-- Page Header -->
+                <div class="mb-6">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between">
+                        <div>
+                            <h1 class="text-2xl md:text-3xl font-bold text-ink-black mb-2">
+                                {% block page_title %}Project Manager Dashboard{% endblock %}
+                            </h1>
+                            <p class="text-dark-cyan">
+                                {% block page_subtitle %}{% endblock %}
+                            </p>
+                        </div>
+                        <div class="mt-4 md:mt-0 flex space-x-3">
+                            {% block header_actions %}{% endblock %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Content -->
+                {% block content %}{% endblock %}
+            </main>
+            
+            <!-- Footer -->
+            <footer class="bg-white border-t border-vanilla-custard/30 px-6 py-4">
+                <div class="flex flex-col md:flex-row md:items-center justify-between">
+                    <div class="text-sm text-dark-teal/70">
+                        <span>© 2025 ProjectFlow All rights reserved.</span>
+                        <span class="mx-2">•</span>
+                        <span>Project Manager Dashboard</span>
+                    </div>
+                    <div class="mt-2 md:mt-0 text-sm text-dark-teal/70">
+                        <span>v2.1.0</span>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Common Modals Container -->
+    <div id="modalContainer"></div>
+
+    <!-- Block for additional modals -->
+    {% block extra_modals %}
+    <!-- Request Changes Modal -->
+<div id="requestChangesModal" class="modal">
+    <div class="modal-content max-w-md">
+        <div class="p-6 border-b border-vanilla-custard/20">
+            <h3 class="text-xl font-bold text-ink-black">Request Changes</h3>
+            <p class="text-sm text-dark-cyan mt-1">Provide feedback for task improvement</p>
+        </div>
+        <div class="p-6">
+            <form id="requestChangesForm">
+                <input type="hidden" id="changeTaskId">
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Task</label>
+                    <p class="text-ink-black font-medium text-lg" id="changeTaskTitle">Loading...</p>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Assigned To</label>
+                    <p class="text-dark-cyan" id="changeTaskAssignee">Loading...</p>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Feedback *</label>
+                    <textarea id="changeFeedback" rows="4" class="w-full px-3 py-2 form-input rounded-md" required placeholder="What changes are required? Be specific about what needs to be improved..."></textarea>
+                </div>
+                
+                <div class="flex justify-end space-x-3 pt-4 border-t border-vanilla-custard/20">
+                    <button type="button" onclick="closeModal('requestChangesModal')" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+                    <button type="submit" class="px-4 py-2 btn-primary text-white rounded-md">Request Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+    <!-- New Task Modal -->
+    <div id="newTaskModal" class="modal">
+        <div class="modal-content">
+            <div class="p-6 border-b border-vanilla-custard/20">
+                <h3 class="text-xl font-bold text-ink-black">Create New Task</h3>
+                <p class="text-sm text-dark-cyan mt-1">Add a new task to your project</p>
+            </div>
+            <div class="p-6">
+                <form id="newTaskForm">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Task Title *</label>
+                            <input type="text" id="taskTitle" class="w-full px-3 py-2 form-input rounded-md" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Project *</label>
+                            <select id="taskProject" class="w-full px-3 py-2 form-select rounded-md" required>
+                                <option value="">Select Project</option>
+                                {% for project in managed_projects %}
+                                <option value="{{ project.id }}">{{ project.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Assigned To</label>
+                            <select id="taskAssignee" class="w-full px-3 py-2 form-select rounded-md">
+                                <option value="">Select Team Member</option>
+                                {% for member_info in member_data %}
+                                <option value="{{ member_info.member.employee.id }}">{{ member_info.user_full_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Task Type</label>
+                            <select id="taskType" class="w-full px-3 py-2 form-select rounded-md">
+                                <option value="feature">Feature</option>
+                                <option value="bug">Bug</option>
+                                <option value="improvement">Improvement</option>
+                                <option value="research">Research</option>
+                                <option value="documentation">Documentation</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Priority *</label>
+                            <select id="taskPriority" class="w-full px-3 py-2 form-select rounded-md" required>
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                                <option value="critical">Critical</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Due Date *</label>
+                            <input type="date" id="taskDueDate" class="w-full px-3 py-2 form-input rounded-md" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Estimated Hours *</label>
+                            <input type="number" id="taskEstimatedHours" class="w-full px-3 py-2 form-input rounded-md" min="1" max="100" value="8" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                        <textarea id="taskDescription" rows="4" class="w-full px-3 py-2 form-input rounded-md"></textarea>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3 pt-4 border-t border-vanilla-custard/20">
+                        <button type="button" onclick="closeModal('newTaskModal')" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+                        <button type="submit" class="px-4 py-2 btn-primary text-white rounded-md">Create Task</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage Team Modal -->
+    <div id="manageTeamModal" class="modal">
+        <div class="modal-content">
+            <div class="p-6 border-b border-vanilla-custard/20">
+                <h3 class="text-xl font-bold text-ink-black">Manage Team</h3>
+                <p class="text-sm text-dark-cyan mt-1">Add or remove team members from your project</p>
+            </div>
+            <div class="p-6">
+                <input type="hidden" id="teamProjectId" value="{% if active_project %}{{ active_project.id }}{% endif %}">
+                
+                <div class="mb-6">
+                    <h4 class="text-lg font-medium text-ink-black mb-4">Current Team Members</h4>
+                    <div class="space-y-3" id="currentTeamMembers">
+                        {% for member_info in member_data %}
+                        <div class="flex justify-between items-center p-3 border border-vanilla-custard/30 rounded-lg card-hover" data-member-id="{{ member_info.member.employee.id }}">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 rounded-full bg-gradient-to-br {{ member_info.color_class }} flex items-center justify-center text-white font-bold">
+                                    {{ member_info.initials }}
+                                </div>
+                                <div class="ml-3">
+                                    <p class="font-medium text-ink-black">{{ member_info.user_full_name }}</p>
+                                    <p class="text-sm text-dark-cyan">{{ member_info.member.get_role_display }}</p>
+                                </div>
+                            </div>
+                            <button onclick="removeTeamMember('{{ member_info.member.employee.id }}')" class="text-rusty-spice hover:text-oxidized-iron transition-colors p-2">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        {% empty %}
+                        <p class="text-gray-500 text-center py-4">No team members yet.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 class="text-lg font-medium text-ink-black mb-4">Add Team Member</h4>
+                    <div class="flex flex-col md:flex-row md:space-x-3 space-y-3 md:space-y-0 mb-4">
+                        <select id="availableEmployeeSelect" class="flex-1 px-3 py-2 form-select rounded-md">
+                            <option value="">Select Employee</option>
+                        </select>
+                        <select id="roleSelect" class="px-3 py-2 form-select rounded-md md:w-40">
+                            <option value="dev">Developer</option>
+                            <option value="designer">Designer</option>
+                            <option value="qa">QA Tester</option>
+                            <option value="analyst">Business Analyst</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-4 hidden" id="employeeDetails">
+                        <div class="p-4 bg-gradient-to-r from-pearl-aqua/10 to-vanilla-custard/10 rounded-lg border border-pearl-aqua/20">
+                            <h5 class="font-medium mb-2 text-ink-black" id="employeeName"></h5>
+                            <p class="text-sm text-dark-cyan mb-1" id="employeePosition"></p>
+                            <p class="text-sm text-dark-cyan mb-1" id="employeeDepartment"></p>
+                            <p class="text-sm text-dark-cyan" id="employeeSkills"></p>
+                        </div>
+                    </div>
+                    <button id="addMemberBtn" class="w-full px-4 py-2 btn-secondary text-white rounded-md">
+                        <i class="fas fa-plus mr-2"></i>Add to Team
+                    </button>
+                </div>
+                
+                <div class="flex justify-end space-x-3 pt-6 mt-6 border-t border-vanilla-custard/20">
+                    <button type="button" onclick="closeModal('manageTeamModal')" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">Close</button>
+                    <button type="button" id="saveTeamBtn" class="px-4 py-2 btn-secondary text-white rounded-md">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedule Meeting Modal -->
+    <div id="scheduleMeetingModal" class="modal">
+        <div class="modal-content">
+            <div class="p-6 border-b border-vanilla-custard/20">
+                <h3 class="text-xl font-bold text-ink-black">Schedule Team Meeting</h3>
+                <p class="text-sm text-dark-cyan mt-1">Schedule a meeting with your team members</p>
+            </div>
+            <div class="p-6">
+                <form id="scheduleMeetingForm">
+                    <input type="hidden" id="meetingProjectId" value="{% if active_project %}{{ active_project.id }}{% endif %}">
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Meeting Title *</label>
+                        <input type="text" id="meetingTitle" class="w-full px-3 py-2 form-input rounded-md" required placeholder="e.g., Weekly Sprint Planning">
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Date *</label>
+                            <input type="date" id="meetingDate" class="w-full px-3 py-2 form-input rounded-md" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Time *</label>
+                            <input type="time" id="meetingTime" class="w-full px-3 py-2 form-input rounded-md" required value="10:00">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Agenda</label>
+                        <textarea id="meetingAgenda" rows="3" class="w-full px-3 py-2 form-input rounded-md" placeholder="What will be discussed in the meeting?"></textarea>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Participants</label>
+                        <div class="border border-vanilla-custard/30 rounded-md p-4">
+                            <div class="space-y-2">
+                                {% for member_info in member_data %}
+                                <div class="flex items-center">
+                                    <div class="w-6 h-6 rounded-full bg-gradient-to-br {{ member_info.color_class }} flex items-center justify-center text-white text-xs mr-2">
+                                        {{ member_info.initials }}
+                                    </div>
+                                    <span class="text-sm text-ink-black">{{ member_info.user_full_name }}</span>
+                                    <span class="text-xs text-dark-cyan ml-2">({{ member_info.member.get_role_display }})</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <p class="text-xs text-dark-cyan mt-2">All active team members will be invited</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3 pt-4 border-t border-vanilla-custard/20">
+                        <button type="button" onclick="closeModal('scheduleMeetingModal')" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+                        <button type="submit" class="px-4 py-2 btn-secondary text-white rounded-md">Schedule Meeting</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Request Changes Modal -->
+    <div id="requestChangesModal" class="modal">
+        <div class="modal-content">
+            <div class="p-6 border-b border-vanilla-custard/20">
+                <h3 class="text-xl font-bold text-ink-black">Request Changes</h3>
+                <p class="text-sm text-dark-cyan mt-1">Provide feedback for task improvement</p>
+            </div>
+            <div class="p-6">
+                <form id="requestChangesForm">
+                    <input type="hidden" id="changeTaskId">
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Task</label>
+                        <p class="text-ink-black font-medium text-lg" id="changeTaskTitle"></p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Assigned To</label>
+                        <p class="text-dark-cyan" id="changeTaskAssignee"></p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Feedback *</label>
+                        <textarea id="changeFeedback" rows="4" class="w-full px-3 py-2 form-input rounded-md" required placeholder="What changes are required? Be specific about what needs to be improved..."></textarea>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3 pt-4 border-t border-vanilla-custard/20">
+                        <button type="button" onclick="closeModal('requestChangesModal')" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+                        <button type="submit" class="px-4 py-2 btn-primary text-white rounded-md">Request Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmationModal" class="modal">
+        <div class="modal-content max-w-md">
+            <div class="p-6 text-center">
+                <div class="w-16 h-16 bg-gradient-to-br from-rusty-spice/20 to-oxidized-iron/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-exclamation-triangle text-rusty-spice text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-ink-black mb-2" id="confirmationTitle"></h3>
+                <p class="text-dark-cyan mb-6" id="confirmationMessage"></p>
+                <div class="flex justify-center space-x-3">
+                    <button onclick="closeModal('confirmationModal')" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+                    <button id="confirmActionBtn" class="px-4 py-2 btn-primary text-white rounded-md">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="modal">
+        <div class="modal-content max-w-md">
+            <div class="p-6 text-center">
+                <div class="w-16 h-16 bg-gradient-to-br from-dark-teal/20 to-dark-cyan/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-check text-dark-teal text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-ink-black mb-2" id="successTitle">Success!</h3>
+                <p class="text-dark-cyan mb-6" id="successMessage"></p>
+                <button onclick="closeModal('successModal')" class="px-4 py-2 btn-secondary text-white rounded-md">Continue</button>
+            </div>
+        </div>
+    </div>
+    {% endblock %}
+
+    <!-- Common JavaScript -->
+    <script>
+        const CSRF_TOKEN = "{{ csrf_token }}";
+        const PM_API_BASE = "{% url 'api:api-root' %}";
+        
+        // Mobile sidebar functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const closeSidebar = document.getElementById('closeSidebar');
+            const sidebar = document.querySelector('.sidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            
+            // Toggle sidebar on mobile
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', function() {
+                    sidebar.classList.add('active');
+                    sidebarOverlay.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                });
+            }
+            
+            // Close sidebar when close button is clicked
+            if (closeSidebar) {
+                closeSidebar.addEventListener('click', function() {
+                    sidebar.classList.remove('active');
+                    sidebarOverlay.classList.remove('active');
+                    document.body.style.overflow = '';
+                });
+            }
+            
+            // Close sidebar when overlay is clicked
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', function() {
+                    sidebar.classList.remove('active');
+                    sidebarOverlay.classList.remove('active');
+                    document.body.style.overflow = '';
+                });
+            }
+            
+            // Desktop sidebar toggle
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', function(e) {
+                    if (window.innerWidth >= 768) {
+                        e.stopPropagation();
+                        sidebar.classList.toggle('w-64');
+                        sidebar.classList.toggle('w-20');
+                        
+                        // Toggle text in sidebar items
+                        const sidebarTexts = document.querySelectorAll('.sidebar span:not(.notification-badge span)');
+                        sidebarTexts.forEach(text => {
+                            text.classList.toggle('hidden');
+                        });
+                        
+                        // Toggle logo text
+                        const logoText = document.querySelector('.sidebar p');
+                        if (logoText) logoText.classList.toggle('hidden');
+                    }
+                });
+            }
+            
+            // Handle window resize
+            window.addEventListener('resize', function() {
+                if (window.innerWidth >= 768) {
+                    sidebar.classList.remove('active');
+                    if (sidebarOverlay) sidebarOverlay.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            });
+            
+            // New Task Button
+            const newTaskBtn = document.getElementById('newTaskBtn');
+            if (newTaskBtn) {
+                newTaskBtn.addEventListener('click', function() {
+                    openModal('newTaskModal');
+                });
+            }
+            
+            // Initialize date inputs with today's date
+            const today = new Date().toISOString().split('T')[0];
+            const dateInputs = document.querySelectorAll('input[type="date"]');
+            dateInputs.forEach(input => {
+                if (!input.value) {
+                    input.value = today;
+                }
+            });
+            
+            // Search functionality
+            const searchInput = document.querySelector('input[type="text"]');
+            if (searchInput) {
+                searchInput.addEventListener('focus', function() {
+                    this.parentElement.classList.add('ring-2', 'ring-golden-orange', 'ring-opacity-30');
+                });
+                
+                searchInput.addEventListener('blur', function() {
+                    this.parentElement.classList.remove('ring-2', 'ring-golden-orange', 'ring-opacity-30');
+                });
+            }
+            
+            // Add hover effects to all cards
+            document.querySelectorAll('.card-hover').forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-5px)';
+                });
+                
+                card.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0)';
+                });
+            });
+        });
+        
+        // Enhanced Toast Notification System
+        function showToast(title, message, type = 'info', duration = 5000) {
+            const container = document.getElementById('toastContainer');
+            const toastId = 'toast-' + Date.now();
+            
+            const icons = {
+                success: 'fa-check-circle',
+                error: 'fa-exclamation-circle',
+                info: 'fa-info-circle',
+                warning: 'fa-exclamation-triangle'
+            };
+            
+            const toast = document.createElement('div');
+            toast.id = toastId;
+            toast.className = `toast-${type} rounded-xl p-4 shadow-2xl transform transition-all duration-300 translate-x-96 opacity-0`;
+            toast.innerHTML = `
+                <div class="flex items-start">
+                    <i class="fas ${icons[type] || 'fa-info-circle'} text-xl mr-3 mt-0.5"></i>
+                    <div class="flex-1">
+                        <p class="font-semibold">${title}</p>
+                        <p class="text-sm opacity-90 mt-1">${message}</p>
+                    </div>
+                    <button onclick="closeToast('${toastId}')" class="ml-3 text-white/80 hover:text-white">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Animate in
+            setTimeout(() => {
+                toast.classList.remove('translate-x-96', 'opacity-0');
+                toast.classList.add('translate-x-0', 'opacity-100');
+            }, 10);
+            
+            // Auto dismiss
+            if (duration > 0) {
+                setTimeout(() => {
+                    closeToast(toastId);
+                }, duration);
+            }
+            
+            return toastId;
+        }
+        
+        function closeToast(toastId) {
+            const toast = document.getElementById(toastId);
+            if (toast) {
+                toast.classList.remove('translate-x-0', 'opacity-100');
+                toast.classList.add('translate-x-96', 'opacity-0');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }
+        }
+        
+        // Modal functionality
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            }
+        }
+        
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+            }
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                    document.body.style.overflow = '';
+                }
+            });
+        };
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                const modals = document.querySelectorAll('.modal');
+                modals.forEach(modal => {
+                    if (modal.style.display === 'flex') {
+                        modal.style.display = 'none';
+                        document.body.style.overflow = '';
+                    }
+                });
+            }
+        });
+        
+        // Team management functions
+        function removeTeamMember(memberId) {
+            showConfirmation(
+                'Remove Team Member',
+                'Are you sure you want to remove this team member from the project?',
+                function() {
+                    // In a real implementation, this would be an AJAX call
+                    const memberElement = document.querySelector(`[data-member-id="${memberId}"]`);
+                    if (memberElement) {
+                        memberElement.remove();
+                        showToast('Success', 'Team member removed successfully', 'success');
+                    }
+                }
+            );
+        }
+        
+        function showConfirmation(title, message, confirmCallback) {
+            const modal = document.getElementById('confirmationModal');
+            const titleElement = document.getElementById('confirmationTitle');
+            const messageElement = document.getElementById('confirmationMessage');
+            const confirmBtn = document.getElementById('confirmActionBtn');
+            
+            if (modal && titleElement && messageElement && confirmBtn) {
+                titleElement.textContent = title;
+                messageElement.textContent = message;
+                
+                // Remove previous event listeners
+                const newConfirmBtn = confirmBtn.cloneNode(true);
+                confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+                
+                // Add new event listener
+                newConfirmBtn.addEventListener('click', function() {
+                    confirmCallback();
+                    closeModal('confirmationModal');
+                });
+                
+                openModal('confirmationModal');
+            }
+        }
+        
+        function showSuccess(message) {
+            const modal = document.getElementById('successModal');
+            const messageElement = document.getElementById('successMessage');
+            
+            if (modal && messageElement) {
+                messageElement.textContent = message;
+                openModal('successModal');
+            }
+        }
+        
+        // Notification and message button handlers
+        document.getElementById('notificationsBtn')?.addEventListener('click', function() {
+            showToast('Notifications', 'Loading your notifications...', 'info');
+        });
+        
+        // Tooltip initialization
+        document.querySelectorAll('[data-tooltip]').forEach(element => {
+            element.addEventListener('mouseenter', function() {
+                const tooltip = document.createElement('div');
+                tooltip.className = 'fixed bg-ink-black text-white text-sm px-3 py-2 rounded-lg shadow-xl z-50';
+                tooltip.textContent = this.getAttribute('data-tooltip');
+                document.body.appendChild(tooltip);
+                
+                const rect = this.getBoundingClientRect();
+                tooltip.style.top = (rect.top - tooltip.offsetHeight - 10) + 'px';
+                tooltip.style.left = (rect.left + rect.width/2 - tooltip.offsetWidth/2) + 'px';
+                
+                this._tooltip = tooltip;
+            });
+            
+            element.addEventListener('mouseleave', function() {
+                if (this._tooltip) {
+                    this._tooltip.remove();
+                    delete this._tooltip;
+                }
+            });
+        });
+        function handleTaskAssignment(assignedToValue, taskData) {
+    // If it's "all", we need to handle it specially
+    if (assignedToValue === 'all') {
+        taskData.assigned_to = 'all';
+        return true;
+    }
+    
+    // Otherwise, it should be a number or empty
+    if (assignedToValue && assignedToValue !== '') {
+        taskData.assigned_to = parseInt(assignedToValue);
+        return true;
+    }
+    
+    // If empty, leave it as empty string
+    taskData.assigned_to = '';
+    return true;
+}
+        
+       // Form submission for New Task
+const newTaskForm = document.getElementById('newTaskForm');
+if (newTaskForm) {
+    newTaskForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const assignedToValue = document.getElementById('taskAssignee').value;
+        const taskData = {
+            title: document.getElementById('taskTitle').value.trim(),
+            project_id: document.getElementById('taskProject').value,
+            assigned_to: assignedToValue, // Keep as string, will be handled on server
+            task_type: document.getElementById('taskType').value,
+            priority: document.getElementById('taskPriority').value,
+            due_date: document.getElementById('taskDueDate').value,
+            estimated_hours: parseFloat(document.getElementById('taskEstimatedHours').value),
+            description: document.getElementById('taskDescription').value.trim()
+        };
+        
+        console.log('Task data being sent:', taskData);
+        
+        // Basic validation
+        if (!taskData.title || !taskData.project_id || !taskData.due_date || !taskData.estimated_hours) {
+            showToast('Error', 'Please fill all required fields', 'error');
+            return;
+        }
+        
+        try {
+            const resp = await fetch("{% url 'create_task_api' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: JSON.stringify(taskData)
+            });
+            
+            const result = await resp.json();
+            console.log('Response:', result);
+            
+            if (result.success) {
+                closeModal('newTaskModal');
+                
+                if (result.assigned_to_all) {
+                    showSuccess(`${result.message} - Created ${result.members_count || result.task_ids?.length || 0} tasks`);
+                } else {
+                    showSuccess(result.message || 'Task created successfully!');
+                }
+                
+                // Clear form
+                newTaskForm.reset();
+                
+                // Reset date to today
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('taskDueDate').value = today;
+                document.getElementById('taskEstimatedHours').value = 8;
+                
+                // Reload tasks list if on tasks page
+                if (window.location.pathname.includes('/tasks/') || 
+                    window.location.pathname.includes('/pm/tasks/') ||
+                    window.location.pathname.includes('/dashboard')) {
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                }
+            } else {
+                showToast('Error', result.error || 'Failed to create task', 'error');
+            }
+        } catch (err) {
+            console.error('Create task error:', err);
+            showToast('Error', 'Network error while creating task: ' + err.message, 'error');
+        }
+    });
+
+    
+    // Load team members when project is selected
+    const taskProjectSelect = document.getElementById('taskProject');
+    const taskAssigneeSelect = document.getElementById('taskAssignee');
+    
+    if (taskProjectSelect && taskAssigneeSelect) {
+        taskProjectSelect.addEventListener('change', async function() {
+            const projectId = this.value;
+            
+            // Clear current options
+            taskAssigneeSelect.innerHTML = '<option value="">Select Team Member</option>';
+            taskAssigneeSelect.disabled = true;
+            
+            if (!projectId) {
+                taskAssigneeSelect.disabled = false;
+                return;
+            }
+            
+            try {
+                // Fetch team members for selected project
+                const resp = await fetch(`/api/projects/${projectId}/available-employees/?mode=members`, {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': getCSRFToken()
+                    }
+                });
+                
+                const result = await resp.json();
+                if (result.success) {
+                    // Add team member options
+                    result.employees.forEach(employee => {
+                        const option = document.createElement('option');
+                        option.value = employee.id;
+                        option.textContent = `${employee.name} (${employee.role})`;
+                        taskAssigneeSelect.appendChild(option);
+                    });
+                    
+                   
+                } else {
+                    showToast('Error', result.error || 'Failed to load team members', 'error');
+                }
+            } catch (err) {
+                console.error('Error loading team members:', err);
+                showToast('Error', 'Network error while loading team members', 'error');
+            } finally {
+                taskAssigneeSelect.disabled = false;
+            }
+        });
+    }
+}
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

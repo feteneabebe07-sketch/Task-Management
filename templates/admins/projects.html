@@ -1,0 +1,1442 @@
+{% extends 'admins/base.html' %}
+{% load static %}
+
+{% block title %}Projects Management{% endblock %}
+
+{% block header_title %}Projects Management{% endblock %}
+
+{% block page_title %}Project Management{% endblock %}
+{% block page_subtitle %}Manage and track all company projects efficiently{% endblock %}
+
+{% block header_actions %}
+<button onclick="openCreateProjectModal()" class="btn-primary text-white px-5 py-2.5 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all">
+    <i class="fas fa-plus mr-2"></i>
+    Create Project
+</button>
+
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6 md:space-y-8">
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        <!-- Total Projects Card -->
+        <div class="stat-card p-5 md:p-6 group cursor-pointer">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-dark-cyan/70 text-sm font-medium">Total Projects</p>
+                    <h3 class="text-2xl md:text-3xl font-bold text-ink-black mt-2">{{ projects|length }}</h3>
+                </div>
+                <div class="p-3 bg-gradient-to-br from-dark-teal/10 to-dark-cyan/10 rounded-xl group-hover:from-dark-teal/20 group-hover:to-dark-cyan/20 transition-all">
+                    <i class="fas fa-project-diagram text-dark-teal text-xl md:text-2xl"></i>
+                </div>
+            </div>
+            <div class="flex items-center text-sm">
+                <span class="text-dark-cyan font-medium flex items-center">
+                    <i class="fas fa-arrow-up mr-1 text-xs"></i>
+                    {% with new_projects=0 %}
+                    {% for project in projects %}
+                        {% if project.created_at and project.created_at|timesince|slice:":2"|add:"0" <= 30 %}
+                            {% with new_projects=new_projects|add:1 %}{% endwith %}
+                        {% endif %}
+                    {% endfor %}
+                    +{{ new_projects }} this month
+                    {% endwith %}
+                </span>
+                <div class="ml-auto bg-dark-teal/10 text-dark-teal text-xs px-2 py-1 rounded-full">
+                    {{ active_projects_count }} active
+                </div>
+            </div>
+        </div>
+        
+        <!-- Active Projects Card -->
+        <div class="stat-card p-5 md:p-6 group cursor-pointer">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-dark-cyan/70 text-sm font-medium">Active</p>
+                    <h3 class="text-2xl md:text-3xl font-bold text-ink-black mt-2">{{ active_projects_count }}</h3>
+                </div>
+                <div class="p-3 bg-gradient-to-br from-dark-cyan/10 to-pearl-aqua/10 rounded-xl group-hover:from-dark-cyan/20 group-hover:to-pearl-aqua/20 transition-all">
+                    <i class="fas fa-play-circle text-dark-cyan text-xl md:text-2xl"></i>
+                </div>
+            </div>
+            <div class="flex items-center text-sm">
+                <span class="text-dark-cyan font-medium flex items-center">
+                    <i class="fas fa-chart-line mr-1 text-xs"></i>
+                    {% with total=projects|length active=active_projects_count %}
+                    {% if total > 0 %}
+                        {{ active|floatformat:0 }}% active
+                    {% else %}
+                        0% active
+                    {% endif %}
+                    {% endwith %}
+                </span>
+                <div class="ml-auto bg-dark-cyan/10 text-dark-cyan text-xs px-2 py-1 rounded-full">
+                    In progress
+                </div>
+            </div>
+        </div>
+        
+        <!-- Completed Projects Card -->
+        <div class="stat-card p-5 md:p-6 group cursor-pointer">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-dark-cyan/70 text-sm font-medium">Completed</p>
+                    <h3 class="text-2xl md:text-3xl font-bold text-ink-black mt-2">{{ completed_projects_count }}</h3>
+                </div>
+                <div class="p-3 bg-gradient-to-br from-golden-orange/10 to-burnt-caramel/10 rounded-xl group-hover:from-golden-orange/20 group-hover:to-burnt-caramel/20 transition-all">
+                    <i class="fas fa-check-circle text-golden-orange text-xl md:text-2xl"></i>
+                </div>
+            </div>
+            <div class="flex items-center text-sm">
+                <span class="text-golden-orange font-medium flex items-center">
+                    <i class="fas fa-trophy mr-1 text-xs"></i>
+                    {% with completed_this_month=0 %}
+                    {% for project in projects %}
+                        {% if project.status == 'completed' and project.updated_at and project.updated_at|timesince|slice:":2"|add:"0" <= 30 %}
+                            {% with completed_this_month=completed_this_month|add:1 %}{% endwith %}
+                        {% endif %}
+                    {% endfor %}
+                    {{ completed_this_month }} this month
+                    {% endwith %}
+                </span>
+                <div class="ml-auto bg-golden-orange/10 text-golden-orange text-xs px-2 py-1 rounded-full">
+                    On schedule
+                </div>
+            </div>
+        </div>
+        
+        <!-- Delayed Projects Card -->
+        <div class="stat-card p-5 md:p-6 group cursor-pointer">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-dark-cyan/70 text-sm font-medium">Delayed</p>
+                    <h3 class="text-2xl md:text-3xl font-bold text-ink-black mt-2">
+                        {% with delayed_count=0 %}
+                        {% for project in projects %}
+                            {% if project.due_date and project.due_date < now.date and project.status == 'active' %}
+                                {% with delayed_count=delayed_count|add:1 %}{% endwith %}
+                            {% endif %}
+                        {% endfor %}
+                        {{ delayed_count }}
+                        {% endwith %}
+                    </h3>
+                </div>
+                <div class="p-3 bg-gradient-to-br from-rusty-spice/10 to-oxidized-iron/10 rounded-xl group-hover:from-rusty-spice/20 group-hover:to-oxidized-iron/20 transition-all">
+                    <i class="fas fa-exclamation-triangle text-rusty-spice text-xl md:text-2xl"></i>
+                </div>
+            </div>
+            <div class="flex items-center text-sm">
+                <span class="text-oxidized-iron font-medium flex items-center">
+                    <i class="fas fa-clock mr-1 text-xs"></i>
+                    Needs attention
+                </span>
+                <div class="ml-auto bg-rusty-spice/10 text-rusty-spice text-xs px-2 py-1 rounded-full">
+                    Critical
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Content Area -->
+    <div class="stat-card p-6">
+        <!-- Table Header -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+            <div>
+                <h3 class="text-lg md:text-xl font-bold text-ink-black mb-1">All Projects</h3>
+                <p class="text-dark-cyan/70 text-sm">Track and manage your projects efficiently</p>
+            </div>
+            <div class="flex items-center space-x-3 mt-4 md:mt-0">
+                <div class="relative">
+                    <input type="text" id="projectSearch" 
+                           placeholder="Search projects..." 
+                           class="pl-10 pr-4 py-2.5 form-input rounded-xl focus:outline-none focus:w-64 transition-all duration-300 w-full md:w-56">
+                    <i class="fas fa-search absolute left-3 top-3 text-dark-cyan"></i>
+                </div>
+                <button class="px-4 py-2.5 border border-vanilla-custard/30 rounded-xl hover:border-dark-teal/50 hover:bg-dark-teal/5 transition-all text-dark-teal font-medium">
+                    <i class="fas fa-filter mr-2"></i>
+                    Filter
+                </button>
+            </div>
+        </div>
+        
+        <!-- Projects Table -->
+        <div class="overflow-x-auto rounded-xl border border-vanilla-custard/30">
+            <table class="w-full">
+                <thead>
+                    <tr class="bg-gradient-to-r from-dark-teal/5 to-dark-cyan/5">
+                        <th class="text-left py-4 px-6 text-sm font-medium text-dark-teal">Project</th>
+                        <th class="text-left py-4 px-6 text-sm font-medium text-dark-teal">Department</th>
+                        <th class="text-left py-4 px-6 text-sm font-medium text-dark-teal">Project Manager</th>
+                        <th class="text-left py-4 px-6 text-sm font-medium text-dark-teal">Progress</th>
+                        <th class="text-left py-4 px-6 text-sm font-medium text-dark-teal">Due Date</th>
+                        <th class="text-left py-4 px-6 text-sm font-medium text-dark-teal">Status</th>
+                        <th class="text-left py-4 px-6 text-sm font-medium text-dark-teal">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100" id="projectsTableBody">
+                    {% for project in projects %}
+                    <tr class="table-row-hover group" data-project-id="{{ project.id }}">
+                        <td class="py-4 px-6">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 rounded-lg flex items-center justify-center mr-3 shadow-md 
+                                    {% if project.project_type == 'web' %}bg-gradient-to-br from-dark-teal/10 to-dark-teal/20
+                                    {% elif project.project_type == 'mobile' %}bg-gradient-to-br from-dark-cyan/10 to-dark-cyan/20
+                                    {% elif project.project_type == 'research' %}bg-gradient-to-br from-golden-orange/10 to-golden-orange/20
+                                    {% elif project.project_type == 'internal' %}bg-gradient-to-br from-rusty-spice/10 to-rusty-spice/20
+                                    {% else %}bg-gradient-to-br from-oxidized-iron/10 to-oxidized-iron/20{% endif %}">
+                                    <i class="fas 
+                                        {% if project.project_type == 'web' %}fa-shopping-cart text-dark-teal
+                                        {% elif project.project_type == 'mobile' %}fa-mobile-alt text-dark-cyan
+                                        {% elif project.project_type == 'research' %}fa-brain text-golden-orange
+                                        {% elif project.project_type == 'internal' %}fa-cogs text-rusty-spice
+                                        {% else %}fa-paint-brush text-oxidized-iron{% endif %}
+                                        text-sm"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium text-ink-black text-sm group-hover:text-dark-teal">{{ project.name|truncatechars:30 }}</h4>
+                                    <p class="text-xs text-dark-cyan/70 mt-1 truncate max-w-[150px]">{{ project.description|default:"No description"|truncatechars:40 }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-4 px-6">
+                            {% if project.department %}
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-dark-teal/10 text-dark-teal">
+                                <i class="fas fa-building mr-1.5 text-xs"></i>
+                                {{ project.department.name|truncatechars:15 }}
+                            </span>
+                            {% else %}
+                            <span class="text-sm text-dark-cyan/70 italic">Not assigned</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-4 px-6">
+                            {% if project.project_manager %}
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-dark-cyan to-dark-teal flex items-center justify-center text-white font-bold text-xs mr-2">
+                                    {{ project.project_manager.first_name|first|upper }}{{ project.project_manager.last_name|first|upper }}
+                                </div>
+                                <span class="text-sm text-ink-black">{{ project.project_manager.get_full_name|default:project.project_manager.username|truncatechars:15 }}</span>
+                            </div>
+                            {% else %}
+                            <span class="text-sm text-dark-cyan/70 italic">Not assigned</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-4 px-6">
+                            <div class="space-y-1">
+                                <div class="w-20 bg-gray-200 rounded-full h-2">
+                                    <div class="h-2 rounded-full progress-bar" 
+                                         style="width: {{ project.progress|default:0 }}%;
+                                                background: linear-gradient(90deg, 
+                                                {% if project.progress >= 80 %}#005f73, #0a9396
+                                                {% elif project.progress >= 50 %}#0a9396, #94d2bd
+                                                {% elif project.progress >= 30 %}#ee9b00, #ca6702
+                                                {% else %}#bb3e03, #ae2012{% endif %});">
+                                    </div>
+                                </div>
+                                <span class="text-xs text-dark-cyan font-medium">{{ project.progress|default:0 }}%</span>
+                            </div>
+                        </td>
+                        <td class="py-4 px-6">
+                            <div class="flex items-center text-sm text-dark-cyan">
+                                <i class="far fa-calendar-alt mr-2 text-xs"></i>
+                                {% if project.due_date %}
+                                    {{ project.due_date|date:"d M Y" }}
+                                    {% if project.due_date < now.date and project.status == 'active' %}
+                                        <span class="text-xs text-rusty-spice ml-2 font-medium">(overdue)</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-dark-cyan/70 italic">Not set</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="py-4 px-6">
+                            {% if project.status == 'active' %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-dark-cyan/10 to-pearl-aqua/10 text-dark-cyan border border-dark-cyan/20">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-dark-cyan mr-1.5"></span>
+                                    Active
+                                </span>
+                            {% elif project.status == 'completed' %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-golden-orange/10 to-burnt-caramel/10 text-golden-orange border border-golden-orange/20">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-golden-orange mr-1.5"></span>
+                                    Completed
+                                </span>
+                            {% elif project.status == 'on_hold' %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-pearl-aqua/10 to-dark-cyan/10 text-dark-cyan border border-pearl-aqua/20">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-dark-cyan mr-1.5"></span>
+                                    On Hold
+                                </span>
+                            {% elif project.status == 'cancelled' %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-rusty-spice/10 to-oxidized-iron/10 text-rusty-spice border border-rusty-spice/20">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-rusty-spice mr-1.5"></span>
+                                    Cancelled
+                                </span>
+                            {% elif project.status == 'draft' %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-vanilla-custard/10 to-dark-cyan/10 text-dark-cyan border border-vanilla-custard/20">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-dark-cyan mr-1.5"></span>
+                                    Draft
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-vanilla-custard/10 to-dark-cyan/10 text-dark-cyan border border-vanilla-custard/20">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-dark-cyan mr-1.5"></span>
+                                    {{ project.status|title }}
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="py-4 px-6">
+                            <div class="flex items-center space-x-2">
+                                <button onclick="viewProject({{ project.id }})" 
+                                        class="w-8 h-8 flex items-center justify-center rounded-lg bg-dark-teal/10 text-dark-teal hover:bg-dark-teal hover:text-white transition-all duration-300 group"
+                                        data-tooltip="View Details">
+                                    <i class="fas fa-eye text-sm group-hover:scale-110"></i>
+                                </button>
+                                <button onclick="editProject({{ project.id }})" 
+                                        class="w-8 h-8 flex items-center justify-center rounded-lg bg-golden-orange/10 text-golden-orange hover:bg-golden-orange hover:text-white transition-all duration-300 group"
+                                        data-tooltip="Edit Project">
+                                    <i class="fas fa-edit text-sm group-hover:scale-110"></i>
+                                </button>
+                                <button onclick="assignPM({{ project.id }})" 
+                                        class="w-8 h-8 flex items-center justify-center rounded-lg bg-dark-cyan/10 text-dark-cyan hover:bg-dark-cyan hover:text-white transition-all duration-300 group"
+                                        data-tooltip="Assign PM">
+                                    <i class="fas fa-user-tie text-sm group-hover:scale-110"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="py-12 text-center">
+                            <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-vanilla-custard/20 to-dark-cyan/20 flex items-center justify-center">
+                                <i class="fas fa-project-diagram text-dark-cyan text-2xl"></i>
+                            </div>
+                            <h4 class="text-lg font-medium text-ink-black mb-2">No Projects Found</h4>
+                            <p class="text-dark-cyan/70 mb-6">Get started by creating your first project</p>
+                            <button onclick="openCreateProjectModal()" class="btn-primary text-white px-5 py-2.5 rounded-xl font-medium">
+                                <i class="fas fa-plus mr-2"></i>
+                                Create Project
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        <div class="flex flex-col sm:flex-row justify-between items-center mt-6 pt-6 border-t border-vanilla-custard/30">
+            <p class="text-sm text-dark-cyan/70 mb-4 sm:mb-0">
+                Showing <span class="font-medium text-ink-black">{{ projects|length }}</span> projects
+            </p>
+            <div class="flex items-center space-x-2">
+                <button class="w-10 h-10 flex items-center justify-center rounded-lg border border-vanilla-custard/30 hover:border-dark-teal/50 hover:bg-dark-teal/5 transition-all">
+                    <i class="fas fa-chevron-left text-dark-cyan"></i>
+                </button>
+                <span class="text-sm font-medium text-ink-black">Page 1 of 1</span>
+                <button class="w-10 h-10 flex items-center justify-center rounded-lg border border-vanilla-custard/30 hover:border-dark-teal/50 hover:bg-dark-teal/5 transition-all">
+                    <i class="fas fa-chevron-right text-dark-cyan"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_modals %}
+<!-- Enhanced Create Project Modal -->
+<div id="createProjectModal" class="fixed inset-0 bg-ink-black/70 overflow-y-auto h-full w-full hidden modal z-50 modal-overlay">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-3xl shadow-2xl rounded-xl bg-white">
+        <div class="relative">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-vanilla-custard/30">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-pearl-aqua/10 to-dark-cyan/10 flex items-center justify-center mr-3">
+                        <i class="fas fa-project-diagram text-pearl-aqua text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-ink-black">Create Project</h3>
+                        <p class="text-sm text-dark-cyan/70">Start a new project initiative</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('createProjectModal')" 
+                        class="text-dark-cyan/70 hover:text-oxidized-iron transition-colors p-2 rounded-full hover:bg-gray-100">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <!-- Form -->
+            <form id="createProjectForm" class="space-y-6">
+                {% csrf_token %}
+                
+                <!-- Project Title -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-heading mr-2 text-dark-cyan"></i>
+                        Project Title *
+                    </label>
+                    <input type="text" name="title" 
+                           class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                           placeholder="Enter project title" required>
+                </div>
+                
+                <!-- Description -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-align-left mr-2 text-dark-cyan"></i>
+                        Description *
+                    </label>
+                    <textarea name="description" 
+                              class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                              rows="3" placeholder="Describe the project" required></textarea>
+                </div>
+                
+                <!-- Department & Type -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-building mr-2 text-dark-cyan"></i>
+                            Department *
+                        </label>
+                        <select name="department" 
+                                class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                            <option value="">Select department</option>
+                            {% for department in departments %}
+                            <option value="{{ department.id }}">{{ department.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-tags mr-2 text-dark-cyan"></i>
+                            Project Type *
+                        </label>
+                        <select name="project_type" 
+                                class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                            <option value="">Select type</option>
+                            <option value="web" class="text-dark-teal">Web Application</option>
+                            <option value="mobile" class="text-dark-cyan">Mobile Application</option>
+                            <option value="research" class="text-golden-orange">Research Project</option>
+                            <option value="internal" class="text-pearl-aqua">Internal System</option>
+                            <option value="client" class="text-rusty-spice">Client Project</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Dates -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-calendar-plus mr-2 text-dark-cyan"></i>
+                            Start Date *
+                        </label>
+                        <input type="date" name="start_date" 
+                               class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-calendar-check mr-2 text-dark-cyan"></i>
+                            End Date *
+                        </label>
+                        <input type="date" name="end_date" 
+                               class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                    </div>
+                </div>
+                
+                <!-- Budget & Progress -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-dollar-sign mr-2 text-dark-cyan"></i>
+                            Budget
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-dark-cyan font-medium">$</span>
+                            <input type="number" name="budget" 
+                                   class="w-full pl-8 px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                                   placeholder="0.00" step="0.01">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-chart-line mr-2 text-dark-cyan"></i>
+                            Initial Progress
+                        </label>
+                        <input type="range" name="progress" min="0" max="100" value="0"
+                               class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                               oninput="this.nextElementSibling.value = this.value + '%'">
+                        <output class="text-sm font-medium text-dark-teal mt-2">0%</output>
+                    </div>
+                </div>
+                
+                <!-- Status & Manager -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-power-off mr-2 text-dark-cyan"></i>
+                            Status
+                        </label>
+                        <select name="status" 
+                                class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent">
+                            <option value="draft" class="text-dark-cyan">Draft</option>
+                            <option value="active" class="text-dark-teal">Active</option>
+                            <option value="on_hold" class="text-golden-orange">On Hold</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-user-tie mr-2 text-dark-cyan"></i>
+                            Project Manager
+                        </label>
+                        <select name="project_manager" 
+                                class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent">
+                            <option value="">Select project manager</option>
+                            {% for manager in project_managers %}
+                            <option value="{{ manager.id }}">{{ manager.get_full_name|default:manager.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex justify-end space-x-3 pt-6 border-t border-vanilla-custard/30">
+                    <button type="button" onclick="closeModal('createProjectModal')" 
+                            class="px-5 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-medium">
+                        Cancel
+                    </button>
+                    <button type="button" onclick="createProject()" 
+                            class="px-5 py-3 btn-primary text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all">
+                        <i class="fas fa-plus mr-2"></i>
+                        Create Project
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Enhanced View Project Modal -->
+<div id="viewProjectModal" class="fixed inset-0 bg-ink-black/70 overflow-y-auto h-full w-full hidden modal z-50 modal-overlay">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-4xl shadow-2xl rounded-xl bg-white">
+        <div class="relative">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-vanilla-custard/30">
+                <div class="flex items-center">
+                    <div id="viewProjectIcon" class="w-12 h-12 rounded-lg bg-gradient-to-br from-dark-teal/10 to-dark-cyan/10 flex items-center justify-center mr-3">
+                        <i class="fas fa-project-diagram text-dark-teal text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-ink-black" id="viewProjectTitle">Project Details</h3>
+                        <p class="text-sm text-dark-cyan/70" id="viewProjectSubtitle">Loading project information...</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('viewProjectModal')" 
+                        class="text-dark-cyan/70 hover:text-oxidized-iron transition-colors p-2 rounded-full hover:bg-gray-100">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <!-- Content -->
+            <div class="space-y-6">
+                <!-- Project Information -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div class="bg-gradient-to-br from-dark-teal/5 to-dark-cyan/5 p-5 rounded-xl">
+                        <h4 class="font-medium text-ink-black mb-4 flex items-center">
+                            <i class="fas fa-info-circle mr-2 text-dark-teal"></i>
+                            Basic Information
+                        </h4>
+                        <div class="space-y-3">
+                            <div>
+                                <p class="text-xs text-dark-cyan/70">Project Name</p>
+                                <p class="font-medium text-ink-black mt-1" id="viewProjectName"></p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-dark-cyan/70">Description</p>
+                                <p class="font-medium text-ink-black mt-1" id="viewProjectDescription"></p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-dark-cyan/70">Project Type</p>
+                                <p class="font-medium text-ink-black mt-1" id="viewProjectType"></p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gradient-to-br from-golden-orange/5 to-burnt-caramel/5 p-5 rounded-xl">
+                        <h4 class="font-medium text-ink-black mb-4 flex items-center">
+                            <i class="fas fa-calendar-alt mr-2 text-golden-orange"></i>
+                            Timeline
+                        </h4>
+                        <div class="space-y-3">
+                            <div>
+                                <p class="text-xs text-dark-cyan/70">Start Date</p>
+                                <p class="font-medium text-ink-black mt-1" id="viewProjectStartDate"></p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-dark-cyan/70">End Date</p>
+                                <p class="font-medium text-ink-black mt-1" id="viewProjectEndDate"></p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-dark-cyan/70">Duration</p>
+                                <p class="font-medium text-ink-black mt-1" id="viewProjectDuration"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Team & Status -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div class="bg-gradient-to-br from-dark-cyan/5 to-pearl-aqua/5 p-5 rounded-xl">
+                        <h4 class="font-medium text-ink-black mb-4 flex items-center">
+                            <i class="fas fa-users mr-2 text-dark-cyan"></i>
+                            Team & Department
+                        </h4>
+                        <div class="space-y-3">
+                            <div>
+                                <p class="text-xs text-dark-cyan/70">Department</p>
+                                <p class="mt-1" id="viewProjectDepartment"></p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-dark-cyan/70">Project Manager</p>
+                                <div class="flex items-center mt-1" id="viewProjectManager"></div>
+                            </div>
+                            <div>
+                                <p class="text-xs text-dark-cyan/70">Team Members</p>
+                                <p class="font-medium text-ink-black mt-1" id="viewProjectTeamCount"></p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gradient-to-br from-pearl-aqua/5 to-dark-cyan/5 p-5 rounded-xl">
+                        <h4 class="font-medium text-ink-black mb-4 flex items-center">
+                            <i class="fas fa-chart-pie mr-2 text-pearl-aqua"></i>
+                            Status & Budget
+                        </h4>
+                        <div class="space-y-3">
+                            <div>
+                                <p class="text-xs text-dark-cyan/70">Status</p>
+                                <p class="mt-1" id="viewProjectStatus"></p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-dark-cyan/70">Budget</p>
+                                <p class="font-medium text-ink-black mt-1" id="viewProjectBudget"></p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-dark-cyan/70">Created</p>
+                                <p class="font-medium text-ink-black mt-1" id="viewProjectCreated"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Progress -->
+                <div class="bg-gradient-to-br from-vanilla-custard/5 to-dark-cyan/5 p-5 rounded-xl">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="font-medium text-ink-black flex items-center">
+                            <i class="fas fa-chart-line mr-2 text-dark-cyan"></i>
+                            Project Progress
+                        </h4>
+                        <span class="text-sm font-medium text-ink-black" id="viewProjectProgressText">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+                        <div class="h-3 rounded-full progress-bar" id="viewProjectProgressBar"></div>
+                    </div>
+                    <div class="flex justify-between text-xs text-dark-cyan/70">
+                        <span id="viewProjectDaysRemaining">0 days remaining</span>
+                        <span id="viewProjectCompletionDate">Completion date</span>
+                    </div>
+                </div>
+                
+                <!-- Team Members -->
+                <div class="bg-gradient-to-br from-rusty-spice/5 to-oxidized-iron/5 p-5 rounded-xl">
+                    <h4 class="font-medium text-ink-black mb-4 flex items-center">
+                        <i class="fas fa-user-friends mr-2 text-rusty-spice"></i>
+                        Team Members
+                    </h4>
+                    <div class="flex flex-wrap gap-3" id="viewProjectTeam">
+                        <!-- Team members will be populated by JS -->
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex justify-end space-x-3 pt-6 border-t border-vanilla-custard/30">
+                    <button type="button" onclick="closeModal('viewProjectModal')" 
+                            class="px-5 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-medium">
+                        Close
+                    </button>
+                    <button type="button" onclick="editCurrentProject()" 
+                            class="px-5 py-3 btn-secondary text-white rounded-xl font-medium">
+                        <i class="fas fa-edit mr-2"></i>
+                        Edit Project
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Enhanced Edit Project Modal -->
+<div id="editProjectModal" class="fixed inset-0 bg-ink-black/70 overflow-y-auto h-full w-full hidden modal z-50 modal-overlay">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-3xl shadow-2xl rounded-xl bg-white">
+        <div class="relative">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-vanilla-custard/30">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-golden-orange/10 to-burnt-caramel/10 flex items-center justify-center mr-3">
+                        <i class="fas fa-edit text-golden-orange text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-ink-black">Edit Project</h3>
+                        <p class="text-sm text-dark-cyan/70">Update project details</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('editProjectModal')" 
+                        class="text-dark-cyan/70 hover:text-oxidized-iron transition-colors p-2 rounded-full hover:bg-gray-100">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <!-- Form -->
+            <form id="editProjectForm" class="space-y-6">
+                {% csrf_token %}
+                <input type="hidden" id="edit_project_id" name="id">
+                
+                <!-- Project Title -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-heading mr-2 text-dark-cyan"></i>
+                        Project Title *
+                    </label>
+                    <input type="text" id="edit_project_title" name="title" 
+                           class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                           placeholder="Enter project title" required>
+                </div>
+                
+                <!-- Description -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-align-left mr-2 text-dark-cyan"></i>
+                        Description *
+                    </label>
+                    <textarea id="edit_project_description" name="description" 
+                              class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                              rows="3" placeholder="Describe the project" required></textarea>
+                </div>
+                
+                <!-- Department & Type -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-building mr-2 text-dark-cyan"></i>
+                            Department *
+                        </label>
+                        <select id="edit_project_department" name="department" 
+                                class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                            <option value="">Select department</option>
+                            {% for department in departments %}
+                            <option value="{{ department.id }}">{{ department.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-tags mr-2 text-dark-cyan"></i>
+                            Project Type *
+                        </label>
+                        <select id="edit_project_type" name="project_type" 
+                                class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                            <option value="">Select type</option>
+                            <option value="web" class="text-dark-teal">Web Application</option>
+                            <option value="mobile" class="text-dark-cyan">Mobile Application</option>
+                            <option value="research" class="text-golden-orange">Research Project</option>
+                            <option value="internal" class="text-pearl-aqua">Internal System</option>
+                            <option value="client" class="text-rusty-spice">Client Project</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Dates -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-calendar-plus mr-2 text-dark-cyan"></i>
+                            Start Date *
+                        </label>
+                        <input type="date" id="edit_project_start_date" name="start_date" 
+                               class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-calendar-check mr-2 text-dark-cyan"></i>
+                            End Date *
+                        </label>
+                        <input type="date" id="edit_project_end_date" name="end_date" 
+                               class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent" required>
+                    </div>
+                </div>
+                
+                <!-- Budget & Progress -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-dollar-sign mr-2 text-dark-cyan"></i>
+                            Budget
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-dark-cyan font-medium">$</span>
+                            <input type="number" id="edit_project_budget" name="budget" 
+                                   class="w-full pl-8 px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                                   placeholder="0.00" step="0.01">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-chart-line mr-2 text-dark-cyan"></i>
+                            Progress (%)
+                        </label>
+                        <input type="number" id="edit_project_progress" name="progress" min="0" max="100"
+                               class="w-full px-4 py-3 form-input rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent"
+                               placeholder="0-100">
+                    </div>
+                </div>
+                
+                <!-- Status & Manager -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-power-off mr-2 text-dark-cyan"></i>
+                            Status
+                        </label>
+                        <select id="edit_project_status" name="status" 
+                                class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent">
+                            <option value="draft" class="text-dark-cyan">Draft</option>
+                            <option value="active" class="text-dark-teal">Active</option>
+                            <option value="on_hold" class="text-golden-orange">On Hold</option>
+                            <option value="completed" class="text-pearl-aqua">Completed</option>
+                            <option value="cancelled" class="text-rusty-spice">Cancelled</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                            <i class="fas fa-user-tie mr-2 text-dark-cyan"></i>
+                            Project Manager
+                        </label>
+                        <select id="edit_project_manager" name="project_manager" 
+                                class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent">
+                            <option value="">Select project manager</option>
+                            {% for manager in project_managers %}
+                            <option value="{{ manager.id }}">{{ manager.get_full_name|default:manager.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex justify-end space-x-3 pt-6 border-t border-vanilla-custard/30">
+                    <button type="button" onclick="closeModal('editProjectModal')" 
+                            class="px-5 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-medium">
+                        Cancel
+                    </button>
+                    <button type="button" onclick="updateProject()" 
+                            class="px-5 py-3 btn-primary text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all">
+                        <i class="fas fa-save mr-2"></i>
+                        Update Project
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Enhanced Assign Project Manager Modal -->
+<div id="assignPMModal" class="fixed inset-0 bg-ink-black/70 overflow-y-auto h-full w-full hidden modal z-50 modal-overlay">
+    <div class="relative top-4 md:top-20 mx-auto p-4 md:p-5 border w-11/12 md:w-full max-w-lg shadow-2xl rounded-xl bg-white">
+        <div class="relative">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-vanilla-custard/30">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-dark-cyan/10 to-dark-teal/10 flex items-center justify-center mr-3">
+                        <i class="fas fa-user-tie text-dark-cyan text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-ink-black">Assign Project Manager</h3>
+                        <p class="text-sm text-dark-cyan/70">Assign leadership to project</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('assignPMModal')" 
+                        class="text-dark-cyan/70 hover:text-oxidized-iron transition-colors p-2 rounded-full hover:bg-gray-100">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <!-- Form -->
+            <form id="assignPMForm" class="space-y-5">
+                {% csrf_token %}
+                <input type="hidden" id="assign_project_id" name="project_id">
+                
+                <!-- Project Selection -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-project-diagram mr-2 text-dark-cyan"></i>
+                        Project
+                    </label>
+                    <div class="px-4 py-3 bg-gradient-to-br from-vanilla-custard/5 to-dark-cyan/5 rounded-xl border border-vanilla-custard/20">
+                        <p class="font-medium text-ink-black" id="assignProjectName"></p>
+                        <p class="text-xs text-dark-cyan/70 mt-1" id="assignProjectDescription"></p>
+                    </div>
+                </div>
+                
+                <!-- PM Selection -->
+                <div>
+                    <label class="block text-sm font-medium text-dark-teal mb-2 flex items-center">
+                        <i class="fas fa-user-tie mr-2 text-dark-cyan"></i>
+                        Project Manager *
+                    </label>
+                    <select id="assign_pm_select" name="pm_id" required 
+                            class="w-full px-4 py-3 form-select rounded-xl focus:outline-none focus:ring-2 focus:ring-dark-teal focus:border-transparent">
+                        <option value="">Select project manager</option>
+                        {% for manager in project_managers %}
+                        <option value="{{ manager.id }}">{{ manager.get_full_name|default:manager.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex justify-end space-x-3 pt-6 border-t border-vanilla-custard/30">
+                    <button type="button" onclick="closeModal('assignPMModal')" 
+                            class="px-5 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-medium">
+                        Cancel
+                    </button>
+                    <button type="button" onclick="assignProjectManager()" 
+                            class="px-5 py-3 btn-primary text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all">
+                        <i class="fas fa-user-check mr-2"></i>
+                        Assign Manager
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Project-specific constants
+    const ADMIN_API_CREATE_PROJECT = "{% url 'admins:api_create_project' %}";
+    const ADMIN_API_GET_PROJECT = "{% url 'admins:api_get_project' 0 %}";
+    const ADMIN_API_UPDATE_PROJECT = "{% url 'admins:api_update_project' 0 %}";
+    const ADMIN_API_ASSIGN_PM = "{% url 'admins:api_assign_pm' %}";
+    
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set default dates in create form
+        const today = new Date().toISOString().split('T')[0];
+        const nextMonth = new Date();
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
+        const nextMonthStr = nextMonth.toISOString().split('T')[0];
+        
+        const startDateInput = document.querySelector('#createProjectForm input[name="start_date"]');
+        const endDateInput = document.querySelector('#createProjectForm input[name="end_date"]');
+        if (startDateInput && endDateInput) {
+            startDateInput.value = today;
+            endDateInput.value = nextMonthStr;
+            endDateInput.min = today;
+        }
+        
+        // Initialize search functionality
+        const searchInput = document.getElementById('projectSearch');
+        if (searchInput) {
+            searchInput.addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase();
+                const rows = document.querySelectorAll('#projectsTableBody tr');
+                
+                rows.forEach(row => {
+                    const text = row.textContent.toLowerCase();
+                    row.style.display = text.includes(searchTerm) ? '' : 'none';
+                });
+            });
+        }
+        
+        // Add hover effects to table rows
+        const tableRows = document.querySelectorAll('#projectsTableBody tr');
+        tableRows.forEach(row => {
+            row.addEventListener('mouseenter', function() {
+                this.classList.add('bg-gradient-to-r', 'from-vanilla-custard/10', 'to-dark-teal/5');
+            });
+            
+            row.addEventListener('mouseleave', function() {
+                this.classList.remove('bg-gradient-to-r', 'from-vanilla-custard/10', 'to-dark-teal/5');
+            });
+        });
+    });
+    
+    // Modal functions
+    function openCreateProjectModal() {
+        document.getElementById('createProjectModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+    }
+    
+    // Create project function
+    async function createProject() {
+        const form = document.getElementById('createProjectForm');
+        if (!form) return;
+        
+        // Validate form
+        let isValid = true;
+        form.querySelectorAll('[required]').forEach(field => {
+            if (!field.value.trim()) {
+                field.classList.add('border-red-300', 'ring-2', 'ring-red-200');
+                isValid = false;
+            } else {
+                field.classList.remove('border-red-300', 'ring-2', 'ring-red-200');
+            }
+        });
+        
+        // Date validation
+        const startDate = new Date(form.querySelector('input[name="start_date"]').value);
+        const endDate = new Date(form.querySelector('input[name="end_date"]').value);
+        if (endDate <= startDate) {
+            showToast('Validation Error', 'End date must be after start date', 'error');
+            return;
+        }
+        
+        if (!isValid) {
+            showToast('Validation Error', 'Please fill all required fields', 'error');
+            return;
+        }
+        
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        try {
+            showToast('Processing', 'Creating project...', 'info');
+            
+            const response = await fetch(ADMIN_API_CREATE_PROJECT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showToast('Success', 'Project created successfully!', 'success');
+                closeModal('createProjectModal');
+                form.reset();
+                
+                // Reload after 1.5 seconds
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('Error', result.error || 'Failed to create project', 'error');
+            }
+        } catch (error) {
+            console.error('Error creating project:', error);
+            showToast('Error', 'Network error occurred', 'error');
+        }
+    }
+    
+    // View project details
+    async function viewProject(projectId) {
+        try {
+            const response = await fetch(ADMIN_API_GET_PROJECT.replace('0', projectId));
+            if (!response.ok) throw new Error('Failed to fetch project details');
+            
+            const project = await response.json();
+            
+            // Populate modal with project data
+            document.getElementById('viewProjectTitle').textContent = project.name;
+            document.getElementById('viewProjectSubtitle').textContent = project.project_type ? `${project.project_type.charAt(0).toUpperCase() + project.project_type.slice(1)} Project` : 'Project';
+            document.getElementById('viewProjectName').textContent = project.name;
+            document.getElementById('viewProjectDescription').textContent = project.description || 'No description';
+            document.getElementById('viewProjectType').textContent = project.project_type ? project.project_type.charAt(0).toUpperCase() + project.project_type.slice(1) : 'N/A';
+            
+            // Set project icon
+            const iconContainer = document.getElementById('viewProjectIcon');
+            const iconClass = getProjectTypeIcon(project.project_type);
+            iconContainer.innerHTML = `<i class="fas ${iconClass} ${getProjectTypeColor(project.project_type)} text-lg"></i>`;
+            
+            // Set dates
+            const startDate = project.start_date ? new Date(project.start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Not set';
+            const endDate = project.end_date ? new Date(project.end_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Not set';
+            document.getElementById('viewProjectStartDate').textContent = startDate;
+            document.getElementById('viewProjectEndDate').textContent = endDate;
+            
+            // Calculate duration
+            if (project.start_date && project.end_date) {
+                const start = new Date(project.start_date);
+                const end = new Date(project.end_date);
+                const diffTime = Math.abs(end - start);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                document.getElementById('viewProjectDuration').textContent = `${diffDays} days`;
+            } else {
+                document.getElementById('viewProjectDuration').textContent = 'Not set';
+            }
+            
+            // Set department
+            const deptElement = document.getElementById('viewProjectDepartment');
+            if (project.department) {
+                deptElement.innerHTML = `
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-dark-teal/10 text-dark-teal">
+                        <i class="fas fa-building mr-1.5 text-xs"></i>
+                        ${project.department.name}
+                    </span>
+                `;
+            } else {
+                deptElement.innerHTML = '<span class="text-sm text-dark-cyan/70 italic">Not assigned</span>';
+            }
+            
+            // Set project manager
+            const managerElement = document.getElementById('viewProjectManager');
+            if (project.project_manager) {
+                const fullName = project.project_manager.get_full_name || project.project_manager.username || 'N/A';
+                const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+                managerElement.innerHTML = `
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-dark-cyan to-dark-teal flex items-center justify-center text-white font-bold text-xs mr-2">
+                            ${initials}
+                        </div>
+                        <span class="font-medium text-sm">${fullName}</span>
+                    </div>
+                `;
+            } else {
+                managerElement.innerHTML = '<span class="text-sm text-dark-cyan/70 italic">Not assigned</span>';
+            }
+            
+            // Set team count
+            document.getElementById('viewProjectTeamCount').textContent = project.team_members ? project.team_members.length : '0';
+            
+            // Set status
+            const statusElement = document.getElementById('viewProjectStatus');
+            let statusClass = 'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ';
+            let statusText = project.status ? project.status.charAt(0).toUpperCase() + project.status.slice(1) : 'Unknown';
+            
+            if (project.status === 'active') {
+                statusClass += 'bg-gradient-to-r from-dark-cyan/10 to-pearl-aqua/10 text-dark-cyan border border-dark-cyan/20';
+            } else if (project.status === 'completed') {
+                statusClass += 'bg-gradient-to-r from-golden-orange/10 to-burnt-caramel/10 text-golden-orange border border-golden-orange/20';
+            } else if (project.status === 'on_hold') {
+                statusClass += 'bg-gradient-to-r from-pearl-aqua/10 to-dark-cyan/10 text-dark-cyan border border-pearl-aqua/20';
+            } else if (project.status === 'cancelled') {
+                statusClass += 'bg-gradient-to-r from-rusty-spice/10 to-oxidized-iron/10 text-rusty-spice border border-rusty-spice/20';
+            } else if (project.status === 'draft') {
+                statusClass += 'bg-gradient-to-r from-vanilla-custard/10 to-dark-cyan/10 text-dark-cyan border border-vanilla-custard/20';
+            } else {
+                statusClass += 'bg-gradient-to-r from-vanilla-custard/10 to-dark-cyan/10 text-dark-cyan border border-vanilla-custard/20';
+            }
+            
+            statusElement.innerHTML = `
+                <span class="${statusClass}">
+                    <span class="w-1.5 h-1.5 rounded-full mr-1.5 ${project.status === 'active' ? 'bg-dark-cyan' : project.status === 'completed' ? 'bg-golden-orange' : project.status === 'on_hold' ? 'bg-dark-cyan' : project.status === 'cancelled' ? 'bg-rusty-spice' : 'bg-dark-cyan'}"></span>
+                    ${statusText}
+                </span>
+            `;
+            
+            // Set budget
+            document.getElementById('viewProjectBudget').textContent = project.budget ? `$${parseFloat(project.budget).toLocaleString('en-US', {minimumFractionDigits: 2})}` : 'Not specified';
+            
+            // Set created date
+            document.getElementById('viewProjectCreated').textContent = project.created_at ? new Date(project.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Unknown';
+            
+            // Set progress
+            const progress = project.progress || 0;
+            const progressBar = document.getElementById('viewProjectProgressBar');
+            progressBar.style.width = `${progress}%`;
+            progressBar.style.background = getProgressGradient(progress);
+            
+            document.getElementById('viewProjectProgressText').textContent = `${progress}%`;
+            
+            // Calculate days remaining
+            if (project.end_date) {
+                const dueDate = new Date(project.end_date);
+                const today = new Date();
+                const diffTime = dueDate - today;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                if (diffDays > 0) {
+                    document.getElementById('viewProjectDaysRemaining').textContent = `${diffDays} days remaining`;
+                    document.getElementById('viewProjectCompletionDate').textContent = `Due ${dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+                } else if (diffDays === 0) {
+                    document.getElementById('viewProjectDaysRemaining').textContent = 'Due today';
+                    document.getElementById('viewProjectCompletionDate').textContent = `Due ${dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+                } else {
+                    document.getElementById('viewProjectDaysRemaining').textContent = `${Math.abs(diffDays)} days overdue`;
+                    document.getElementById('viewProjectCompletionDate').textContent = `Was due ${dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+                }
+            } else {
+                document.getElementById('viewProjectDaysRemaining').textContent = 'No due date';
+                document.getElementById('viewProjectCompletionDate').textContent = 'No completion date';
+            }
+            
+            // Set team members
+            const teamContainer = document.getElementById('viewProjectTeam');
+            teamContainer.innerHTML = '';
+            
+            if (project.team_members && Array.isArray(project.team_members) && project.team_members.length > 0) {
+                project.team_members.forEach(member => {
+                    const fullName = member.get_full_name || member.username || 'Team Member';
+                    const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+                    const position = member.position || member.role || '';
+                    
+                    const memberEl = document.createElement('div');
+                    memberEl.className = 'flex flex-col items-center';
+                    memberEl.innerHTML = `
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-dark-cyan to-dark-teal flex items-center justify-center text-white font-bold text-sm mb-2">
+                            ${initials}
+                        </div>
+                        <div class="text-center">
+                            <p class="text-xs font-medium text-ink-black">${fullName.split(' ')[0]}</p>
+                            ${position ? `<p class="text-xs text-dark-cyan/70 mt-1">${position}</p>` : ''}
+                        </div>
+                    `;
+                    teamContainer.appendChild(memberEl);
+                });
+            } else {
+                teamContainer.innerHTML = '<p class="text-sm text-dark-cyan/70 italic">No team members assigned</p>';
+            }
+            
+            // Store current project ID for edit function
+            document.getElementById('viewProjectModal').dataset.projectId = projectId;
+            
+            openModal('viewProjectModal');
+        } catch (error) {
+            console.error('Error loading project details:', error);
+            showToast('Error', 'Failed to load project details', 'error');
+        }
+    }
+    
+    function editCurrentProject() {
+        const projectId = document.getElementById('viewProjectModal').dataset.projectId;
+        if (projectId) {
+            editProject(projectId);
+        }
+    }
+    
+    // Edit project function
+    async function editProject(projectId) {
+        try {
+            const response = await fetch(ADMIN_API_GET_PROJECT.replace('0', projectId));
+            if (!response.ok) throw new Error('Failed to fetch project details');
+            
+            const project = await response.json();
+            
+            // Fill the edit form with existing data
+            document.getElementById('edit_project_id').value = project.id;
+            document.getElementById('edit_project_title').value = project.name || '';
+            document.getElementById('edit_project_description').value = project.description || '';
+            document.getElementById('edit_project_department').value = project.department_id || '';
+            document.getElementById('edit_project_type').value = project.project_type || 'web';
+            document.getElementById('edit_project_start_date').value = project.start_date || '';
+            document.getElementById('edit_project_end_date').value = project.end_date || '';
+            document.getElementById('edit_project_budget').value = project.budget || '';
+            document.getElementById('edit_project_progress').value = project.progress || 0;
+            document.getElementById('edit_project_status').value = project.status || 'draft';
+            document.getElementById('edit_project_manager').value = project.project_manager_id || '';
+            
+            // Set min date for end date based on start date
+            const startDateInput = document.getElementById('edit_project_start_date');
+            const endDateInput = document.getElementById('edit_project_end_date');
+            if (startDateInput.value) {
+                endDateInput.min = startDateInput.value;
+            }
+            
+            closeModal('viewProjectModal');
+            openModal('editProjectModal');
+        } catch (error) {
+            console.error('Error loading project for edit:', error);
+            showToast('Error', 'Failed to load project details', 'error');
+        }
+    }
+    
+    // Update project function
+    async function updateProject() {
+        const form = document.getElementById('editProjectForm');
+        if (!form) return;
+        
+        // Validate form
+        let isValid = true;
+        form.querySelectorAll('[required]').forEach(field => {
+            if (!field.value.trim()) {
+                field.classList.add('border-red-300', 'ring-2', 'ring-red-200');
+                isValid = false;
+            } else {
+                field.classList.remove('border-red-300', 'ring-2', 'ring-red-200');
+            }
+        });
+        
+        // Date validation
+        const startDate = new Date(form.querySelector('input[name="start_date"]').value);
+        const endDate = new Date(form.querySelector('input[name="end_date"]').value);
+        if (endDate <= startDate) {
+            showToast('Validation Error', 'End date must be after start date', 'error');
+            return;
+        }
+        
+        if (!isValid) {
+            showToast('Validation Error', 'Please fill all required fields', 'error');
+            return;
+        }
+        
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        const projectId = data.id;
+        
+        try {
+            showToast('Processing', 'Updating project...', 'info');
+            
+            const response = await fetch(ADMIN_API_UPDATE_PROJECT.replace('0', projectId), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showToast('Success', 'Project updated successfully!', 'success');
+                closeModal('editProjectModal');
+                
+                // Reload after 1.5 seconds
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('Error', result.error || 'Failed to update project', 'error');
+            }
+        } catch (error) {
+            console.error('Error updating project:', error);
+            showToast('Error', 'Network error occurred', 'error');
+        }
+    }
+    
+    // Assign project manager
+    async function assignPM(projectId) {
+        try {
+            const response = await fetch(ADMIN_API_GET_PROJECT.replace('0', projectId));
+            if (!response.ok) throw new Error('Failed to fetch project details');
+            
+            const project = await response.json();
+            
+            // Set project information in the modal
+            document.getElementById('assign_project_id').value = project.id;
+            document.getElementById('assignProjectName').textContent = project.name;
+            document.getElementById('assignProjectDescription').textContent = project.description ? project.description.substring(0, 100) + (project.description.length > 100 ? '...' : '') : 'No description';
+            
+            // Clear PM selection
+            document.getElementById('assign_pm_select').value = project.project_manager_id || '';
+            
+            openModal('assignPMModal');
+        } catch (error) {
+            console.error('Error loading project for PM assignment:', error);
+            showToast('Error', 'Failed to load project details', 'error');
+        }
+    }
+    
+    // Assign project manager function
+    async function assignProjectManager() {
+        const form = document.getElementById('assignPMForm');
+        if (!form) return;
+        
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        if (!data.pm_id) {
+            showToast('Validation Error', 'Please select a project manager', 'error');
+            return;
+        }
+        
+        try {
+            showToast('Processing', 'Assigning project manager...', 'info');
+            
+            const response = await fetch(ADMIN_API_ASSIGN_PM, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showToast('Success', 'Project manager assigned successfully!', 'success');
+                closeModal('assignPMModal');
+                
+                // Reload after 1.5 seconds
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('Error', result.error || 'Failed to assign project manager', 'error');
+            }
+        } catch (error) {
+            console.error('Error assigning project manager:', error);
+            showToast('Error', 'Network error occurred', 'error');
+        }
+    }
+    
+    // Helper functions
+    function getProjectTypeIcon(projectType) {
+        switch(projectType) {
+            case 'web': return 'fa-shopping-cart';
+            case 'mobile': return 'fa-mobile-alt';
+            case 'research': return 'fa-brain';
+            case 'internal': return 'fa-cogs';
+            case 'client': return 'fa-paint-brush';
+            default: return 'fa-project-diagram';
+        }
+    }
+    
+    function getProjectTypeColor(projectType) {
+        switch(projectType) {
+            case 'web': return 'text-dark-teal';
+            case 'mobile': return 'text-dark-cyan';
+            case 'research': return 'text-golden-orange';
+            case 'internal': return 'text-rusty-spice';
+            case 'client': return 'text-oxidized-iron';
+            default: return 'text-dark-teal';
+        }
+    }
+    
+    function getProgressGradient(progress) {
+        if (progress >= 80) {
+            return 'linear-gradient(90deg, #005f73, #0a9396)';
+        } else if (progress >= 50) {
+            return 'linear-gradient(90deg, #0a9396, #94d2bd)';
+        } else if (progress >= 30) {
+            return 'linear-gradient(90deg, #ee9b00, #ca6702)';
+        } else {
+            return 'linear-gradient(90deg, #bb3e03, #ae2012)';
+        }
+    }
+    
+    // Load stats details (placeholder function)
+    async function loadStatsDetails(type) {
+        showToast('Statistics', `Loading detailed statistics for ${type.replace('_', ' ')}...`, 'info');
+        // In a real implementation, this would fetch and display detailed stats
+    }
+    
+    // Helper function to open modal
+    function openModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+</script>
+{% endblock %}

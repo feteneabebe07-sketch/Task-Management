@@ -1,0 +1,620 @@
+<!-- templates/pm/dashboard.html -->
+{% extends 'pm/base.html' %}
+{% load humanize %}
+
+{% block page_title %}Project Manager Dashboard{% endblock %}
+
+{% block header_title %}
+    Welcome, {{ user.first_name }}!
+{% endblock %}
+
+{% block page_subtitle %}
+    Project Management Dashboard
+{% endblock %}
+
+{% block content %}
+    <!-- Project Selection Dropdown Section -->
+    <div class="mb-8">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+            
+            
+            <div class="flex items-center space-x-3">
+                <span class="text-sm text-gray-500 bg-gray-50 px-3 py-1.5 rounded-lg">
+                    <i class="fas fa-project-diagram mr-1"></i>
+                    {{ managed_projects.count }} project{{ managed_projects.count|pluralize }}
+                </span>
+                {% if selected_project %}
+                <a href="{% url 'pm_dashboard' %}" class="text-sm text-gray-600 hover:text-dark-teal transition-colors px-3 py-1.5 border border-gray-300 rounded-lg hover:border-dark-teal">
+                    <i class="fas fa-times mr-1"></i> Clear Selection
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Project Selector Card -->
+        <div class="stat-card rounded-xl p-5 mb-6 border-2 border-dark-teal/10">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div class="flex-1">
+                    <label for="projectSelect" class="block text-sm font-medium text-ink-black mb-2">
+                        <i class="fas fa-filter mr-1"></i> Select Project
+                    </label>
+                    <div class="relative">
+                        <select id="projectSelect" class="w-full px-4 py-3 pr-10 border border-vanilla-custard rounded-lg focus:ring-2 focus:ring-dark-teal focus:border-dark-teal bg-white appearance-none transition-all duration-200 hover:border-dark-cyan">
+                            <option value="">-- Choose a project --</option>
+                            {% for project in managed_projects %}
+                            <option value="{{ project.id }}" 
+                                    data-status="{{ project.status }}"
+                                    data-progress="{{ project.progress }}"
+                                    data-department="{{ project.department.name }}"
+                                    {% if project.id == selected_project.id %}selected{% endif %}>
+                                {{ project.name }} ({{ project.department.name }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                            <i class="fas fa-chevron-down text-dark-cyan"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-3">
+                    <button id="quickStatsBtn" class="px-4 py-2.5 bg-gradient-to-r from-dark-teal to-dark-cyan text-white rounded-lg hover:shadow-lg transition-all duration-200 flex items-center">
+                        <i class="fas fa-chart-pie mr-2"></i>
+                        Quick Stats
+                    </button>
+                    <a href="{% url 'pm_projects' %}" class="px-4 py-2.5 border-2 border-dark-teal text-dark-teal rounded-lg hover:bg-dark-teal hover:text-white transition-all duration-200 flex items-center">
+                        <i class="fas fa-list mr-2"></i>
+                        View All
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Selected Project Quick View -->
+            {% if selected_project %}
+            <div class="mt-4 pt-4 border-t border-vanilla-custard/30">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="font-bold text-ink-black text-lg">{{ selected_project.name }}</h3>
+                        <div class="flex items-center mt-1 space-x-3">
+                            <span class="px-2.5 py-1 text-xs rounded-full {% if selected_project.status == 'active' %}bg-dark-cyan/10 text-dark-cyan{% elif selected_project.status == 'on_hold' %}bg-golden-orange/10 text-golden-orange{% else %}bg-gray-100 text-gray-600{% endif %}">
+                                {{ selected_project.get_status_display }}
+                            </span>
+                            <span class="text-sm text-dark-cyan">{{ selected_project.department.name }}</span>
+                            <span class="text-sm text-gray-500">Start: {{ selected_project.start_date|date:"M d, Y" }}</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold text-dark-teal">{{ selected_project.progress }}%</div>
+                        <div class="text-xs text-gray-500">Overall Progress</div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        
+        {% if not managed_projects %}
+        <!-- No Projects State -->
+        <div class="bg-gradient-to-br from-white to-vanilla-custard/20 rounded-xl shadow-sm p-8 text-center border-2 border-dashed border-vanilla-custard/50 card-hover">
+            <div class="w-20 h-20 bg-gradient-to-br from-dark-teal/10 to-dark-cyan/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-project-diagram text-3xl text-dark-teal"></i>
+            </div>
+            <h3 class="text-xl font-bold text-ink-black mb-2">No Projects Assigned</h3>
+            <p class="text-gray-500 mb-4 max-w-md mx-auto">You are not currently assigned to any projects. Contact your administrator to be assigned to a project.</p>
+            <button class="px-4 py-2 bg-gradient-to-r from-dark-teal to-dark-cyan text-white rounded-lg hover:shadow-lg transition-all duration-200 inline-flex items-center">
+                <i class="fas fa-envelope mr-2"></i> Request Project Assignment
+            </button>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Selected Project Dashboard -->
+    {% if selected_project %}
+    <div class="space-y-8">
+        <!-- Project Stats Cards - Enhanced -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="stat-card rounded-xl p-5 card-hover border-l-4 border-dark-teal">
+    <div class="flex justify-between items-start">
+        <div>
+            <p class="text-gray-500 text-sm mb-1 flex items-center">
+                <i class="fas fa-chart-line mr-2"></i> Progress
+            </p>
+            
+            <h3 class="text-2xl font-bold text-ink-black">{{ selected_project.progress }}%</h3>
+        </div>
+        <div class="p-2 bg-gradient-to-br from-dark-teal/10 to-dark-cyan/10 rounded-lg">
+            <i class="fas fa-flag-checkered text-dark-teal text-lg"></i>
+        </div>
+    </div>
+    <div class="w-full bg-gray-100 rounded-full h-2 mt-4">
+        <div class="progress-bar h-2 rounded-full bg-gradient-to-r from-dark-teal to-dark-cyan" style="width: {{ selected_project.progress }}%"></div>
+    </div>
+    <p class="text-xs text-dark-cyan mt-2">
+        <i class="fas fa-tasks mr-1"></i>
+        {{ selected_project.completed_tasks_count }} of {{ selected_project.total_tasks_count }} tasks
+    </p>
+</div>
+            <!-- Active Tasks Card -->
+            <div class="stat-card rounded-xl p-5 card-hover border-l-4 border-dark-cyan">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-gray-500 text-sm mb-1 flex items-center">
+                            <i class="fas fa-running mr-2"></i> Active Tasks
+                        </p>
+                        <h3 class="text-2xl font-bold text-ink-black">{{ selected_project.active_tasks_count }}</h3>
+                    </div>
+                    <div class="p-2 bg-gradient-to-br from-dark-cyan/10 to-pearl-aqua/10 rounded-lg">
+                        <i class="fas fa-bolt text-dark-cyan text-lg"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <p class="text-xs {% if selected_project.overdue_tasks_count > 0 %}text-rusty-spice font-medium{% else %}text-dark-cyan{% endif %}">
+                        <i class="fas fa-exclamation-circle mr-1"></i>
+                        {{ selected_project.overdue_tasks_count }} overdue
+                    </p>
+                    <div class="flex items-center mt-2">
+                        <span class="status-dot status-active mr-2"></span>
+                        <span class="text-xs text-gray-600">In Progress: {{ in_progress_tasks }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Team Members Card -->
+            <div class="stat-card rounded-xl p-5 card-hover border-l-4 border-golden-orange">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-gray-500 text-sm mb-1 flex items-center">
+                            <i class="fas fa-users mr-2"></i> Team Members
+                        </p>
+                        <h3 class="text-2xl font-bold text-ink-black">{{ selected_project.team_members_count }}</h3>
+                    </div>
+                    <div class="p-2 bg-gradient-to-br from-golden-orange/10 to-vanilla-custard/10 rounded-lg">
+                        <i class="fas fa-user-check text-golden-orange text-lg"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <p class="text-xs text-dark-cyan">
+                        <i class="fas fa-check-circle mr-1"></i>
+                        {{ selected_project.team_members_count }} active
+                    </p>
+                    <div class="flex items-center mt-2">
+                        <span class="status-dot status-available mr-2"></span>
+                        <span class="text-xs text-gray-600">{{ available_members }} available</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Timeline Card -->
+            <div class="stat-card rounded-xl p-5 card-hover border-l-4 border-rusty-spice">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-gray-500 text-sm mb-1 flex items-center">
+                            <i class="fas fa-calendar-alt mr-2"></i> Timeline
+                        </p>
+                        <h3 class="text-2xl font-bold text-ink-black">{{ selected_project.days_remaining }}d</h3>
+                    </div>
+                    <div class="p-2 bg-gradient-to-br from-rusty-spice/10 to-oxidized-iron/10 rounded-lg">
+                        <i class="fas fa-clock text-rusty-spice text-lg"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <p class="text-xs text-gray-500">
+                        <i class="fas fa-flag mr-1"></i>
+                        Started: {{ selected_project.start_date|date:"M d" }}
+                    </p>
+                    <p class="text-xs text-gray-500 mt-1">
+                        <i class="fas fa-flag-checkered mr-1"></i>
+                        Due: {{ selected_project.due_date|date:"M d" }}
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Dashboard Content -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Team Members -->
+            <div class="stat-card rounded-xl p-5">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-ink-black flex items-center">
+                            <i class="fas fa-users mr-2 text-dark-cyan"></i> Team Members
+                        </h3>
+                        <p class="text-sm text-dark-cyan mt-1">Active team members</p>
+                    </div>
+                   
+                </div>
+                
+                <div class="space-y-3">
+                    {% for member_info in member_data|slice:":5" %}
+                    {% with member=member_info.member %}
+                    <div class="flex items-center justify-between p-3 border border-vanilla-custard/30 rounded-lg hover:bg-vanilla-custard/10 transition-all duration-200 group">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br {{ member_info.color_class }} flex items-center justify-center text-white font-bold shadow-md group-hover:scale-105 transition-transform">
+                                {{ member_info.initials }}
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-ink-black">{{ member_info.user_full_name }}</p>
+                                <p class="text-xs text-dark-cyan flex items-center">
+                                    <i class="fas fa-briefcase mr-1"></i>
+                                    {{ member.get_role_display }}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="status-dot {{ member_info.status_class }}"></span>
+                            <span class="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded">
+                                {{ member_info.task_count }} task{{ member_info.task_count|pluralize }}
+                            </span>
+                        </div>
+                    </div>
+                    {% endwith %}
+                    {% empty %}
+                    <div class="text-center py-6">
+                        <i class="fas fa-users text-3xl text-gray-300 mb-3"></i>
+                        <p class="text-gray-500">No team members yet.</p>
+                        <button id="manageTeamBtnEmpty" class="mt-3 px-4 py-2 bg-gradient-to-r from-dark-teal to-dark-cyan text-white text-sm rounded-lg hover:shadow-lg transition-all duration-200">
+                            <i class="fas fa-user-plus mr-1"></i> Add Team Members
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                {% if member_data|length > 5 %}
+                <div class="mt-4 pt-4 border-t border-vanilla-custard/20">
+                    <a href="{% url 'pm_team' %}?project={{ selected_project.id }}" class="text-sm text-dark-teal hover:text-dark-cyan flex items-center justify-center group">
+                        <span>View all {{ member_data|length }} team members</span>
+                        <i class="fas fa-chevron-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Task Status Overview -->
+            <div class="stat-card rounded-xl p-5">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-ink-black flex items-center">
+                            <i class="fas fa-chart-pie mr-2 text-dark-teal"></i> Task Status
+                        </h3>
+                        <p class="text-sm text-dark-cyan mt-1">Current distribution</p>
+                    </div>
+                    <span class="px-3 py-1 bg-dark-teal/10 text-dark-teal text-sm rounded-full font-medium">
+                        {{ total_tasks }} total
+                    </span>
+                </div>
+                
+                <div class="space-y-4">
+                    <!-- Status Breakdown -->
+                    <div class="space-y-3">
+                        {% for status in task_status_summary %}
+                        <div class="flex items-center justify-between group hover:bg-vanilla-custard/10 p-2 rounded-lg transition-colors">
+                            <div class="flex items-center">
+                                <span class="status-dot {{ status.color_class }} mr-3"></span>
+                                <span class="text-sm text-gray-700">{{ status.name }}</span>
+                            </div>
+                            <div class="flex items-center">
+                                <span class="text-sm font-medium text-ink-black">{{ status.count }}</span>
+                                <span class="text-xs text-gray-400 ml-2">({{ status.percentage }}%)</span>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-tasks text-3xl text-gray-300 mb-2"></i>
+                            <p class="text-sm text-gray-500">No task data available</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <!-- Priority Distribution -->
+                    <div class="pt-4 border-t border-vanilla-custard/20">
+                        <h4 class="text-sm font-medium text-ink-black mb-3 flex items-center">
+                            <i class="fas fa-exclamation-circle mr-2 text-rusty-spice"></i> Priority Distribution
+                        </h4>
+                        <div class="space-y-2">
+                            {% for priority in task_priority_summary %}
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <span class="text-xs px-2.5 py-1 {{ priority.class }} rounded mr-3 font-medium">{{ priority.name }}</span>
+                                    <div class="w-24 bg-gray-200 rounded-full h-2">
+                                        <div class="{{ priority.bg_class }} h-2 rounded-full" style="width: {{ priority.percentage }}%"></div>
+                                    </div>
+                                </div>
+                                <span class="text-xs font-medium text-gray-700">{{ priority.count }}</span>
+                            </div>
+                            {% empty %}
+                            <p class="text-xs text-gray-500">No priority data available</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Upcoming Deadlines -->
+            <div class="stat-card rounded-xl p-5">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-ink-black flex items-center">
+                            <i class="fas fa-calendar-check mr-2 text-golden-orange"></i> Upcoming Deadlines
+                        </h3>
+                        <p class="text-sm text-dark-cyan mt-1">Next 7 days</p>
+                    </div>
+                    <span class="px-3 py-1 bg-golden-orange/10 text-golden-orange text-sm rounded-full font-medium">
+                        {{ upcoming_deadlines|length }} tasks
+                    </span>
+                </div>
+                
+                <div class="space-y-3">
+                    {% for task in upcoming_deadlines|slice:":4" %}
+                    <div class="flex items-center p-3 border border-vanilla-custard/30 rounded-lg hover:bg-gradient-to-r hover:from-vanilla-custard/5 hover:to-pearl-aqua/5 transition-all duration-200 group">
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-golden-orange/20 to-vanilla-custard/20 flex items-center justify-center text-golden-orange font-bold text-sm mr-3">
+                            <i class="fas fa-calendar-day"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="text-sm font-medium text-ink-black">{{ task.title|truncatechars:40 }}</h4>
+                            <div class="flex items-center justify-between mt-1">
+                                <span class="text-xs text-gray-500 flex items-center">
+                                    <i class="fas fa-user mr-1"></i>
+                                    {{ task.assigned_to.user.get_full_name|default:"Unassigned" }}
+                                </span>
+                                <span class="text-xs font-medium {% if task.days_until_due <= 1 %}text-rusty-spice{% elif task.days_until_due <= 3 %}text-golden-orange{% else %}text-dark-cyan{% endif %}">
+                                    {{ task.days_until_due }} day{{ task.days_until_due|pluralize }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-6">
+                        <i class="fas fa-calendar-times text-3xl text-gray-300 mb-3"></i>
+                        <p class="text-gray-500">No upcoming deadlines</p>
+                        <p class="text-xs text-gray-400 mt-1">All tasks are on schedule</p>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                {% if upcoming_deadlines|length > 4 %}
+                <div class="mt-4 pt-4 border-t border-vanilla-custard/20">
+                    <a href="{% url 'pm_tasks' %}?project={{ selected_project.id }}&filter=upcoming" class="text-sm text-dark-teal hover:text-dark-cyan flex items-center justify-center group">
+                        <span>View all upcoming deadlines</span>
+                        <i class="fas fa-chevron-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+      
+        
+        
+        <!-- Recent Activity -->
+        {% if recent_activity_all_projects %}
+        <div class="stat-card rounded-xl p-5">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-ink-black flex items-center">
+                        <i class="fas fa-history mr-2 text-dark-cyan"></i> Recent Activity
+                    </h3>
+                    <p class="text-sm text-dark-cyan mt-1">Updates across projects</p>
+                </div>
+                <span class="px-3 py-1 bg-dark-cyan/10 text-dark-cyan text-sm rounded-full font-medium flex items-center">
+                    <i class="fas fa-bell mr-1"></i>
+                    Latest
+                </span>
+            </div>
+            
+            <div class="space-y-3">
+                {% for activity in recent_activity_all_projects|slice:":5" %}
+                <div class="flex items-start p-3 border border-vanilla-custard/30 rounded-lg hover:bg-gradient-to-r hover:from-vanilla-custard/5 hover:to-pearl-aqua/5 transition-all duration-200 group">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center mr-3 {{ activity.icon_color }} group-hover:scale-110 transition-transform">
+                        <i class="fas {{ activity.icon }}"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-start">
+                            <p class="text-sm text-ink-black font-medium truncate">{{ activity.description }}</p>
+                            <span class="text-xs text-gray-500 ml-2 whitespace-nowrap">{{ activity.time }}</span>
+                        </div>
+                        <div class="flex items-center mt-1 flex-wrap gap-2">
+                            <span class="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded">{{ activity.project_name }}</span>
+                            {% if activity.user_name %}
+                            <div class="flex items-center">
+                                <div class="w-6 h-6 rounded-full bg-gradient-to-br from-dark-teal/20 to-dark-cyan/20 flex items-center justify-center text-dark-teal text-xs mr-1">
+                                    {{ activity.user_initials }}
+                                </div>
+                                <span class="text-xs text-gray-600">{{ activity.user_name }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-6">
+                    <i class="fas fa-history text-3xl text-gray-300 mb-3"></i>
+                    <p class="text-gray-500">No recent activity</p>
+                    <p class="text-xs text-gray-400 mt-1">Updates will appear here</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+   
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Project dropdown functionality
+        const projectSelect = document.getElementById('projectSelect');
+        if (projectSelect) {
+            projectSelect.addEventListener('change', function() {
+                const projectId = this.value;
+                if (projectId) {
+                    window.location.href = `{% url 'pm_dashboard' %}?project=${projectId}`;
+                }
+            });
+            
+            // Add visual feedback for selected option
+            projectSelect.addEventListener('focus', function() {
+                this.classList.add('ring-2', 'ring-dark-teal');
+            });
+            
+            projectSelect.addEventListener('blur', function() {
+                this.classList.remove('ring-2', 'ring-dark-teal');
+            });
+        }
+        
+        // Quick Stats Button
+        const quickStatsBtn = document.getElementById('quickStatsBtn');
+        if (quickStatsBtn) {
+            quickStatsBtn.addEventListener('click', function() {
+                // Show project statistics in a modal or slide-in panel
+                const projectSelect = document.getElementById('projectSelect');
+                const selectedOption = projectSelect.options[projectSelect.selectedIndex];
+                
+                if (selectedOption.value) {
+                    const projectName = selectedOption.text.split(' (')[0];
+                    const status = selectedOption.dataset.status || 'unknown';
+                    const progress = selectedOption.dataset.progress || '0';
+                    const department = selectedOption.dataset.department || 'N/A';
+                    
+                    // Create and show quick stats modal
+                    const statsModal = document.createElement('div');
+                    statsModal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4';
+                    statsModal.innerHTML = `
+                        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-bold text-ink-black">Quick Stats</h3>
+                                <button class="text-gray-400 hover:text-gray-600" onclick="this.closest('.fixed').remove()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div class="space-y-4">
+                                <div class="p-4 bg-gradient-to-r from-dark-teal/5 to-dark-cyan/5 rounded-lg">
+                                    <h4 class="font-medium text-ink-black mb-2">${projectName}</h4>
+                                    <p class="text-sm text-gray-600">${department}</p>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="text-center p-3 bg-gray-50 rounded-lg">
+                                        <div class="text-2xl font-bold text-dark-teal">${progress}%</div>
+                                        <div class="text-xs text-gray-500 mt-1">Progress</div>
+                                    </div>
+                                    <div class="text-center p-3 bg-gray-50 rounded-lg">
+                                        <div class="text-xl font-bold text-dark-cyan capitalize">${status}</div>
+                                        <div class="text-xs text-gray-500 mt-1">Status</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-6 flex justify-end">
+                                <button class="px-4 py-2 bg-dark-teal text-white rounded-lg hover:bg-dark-cyan transition-colors" onclick="this.closest('.fixed').remove()">
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(statsModal);
+                } else {
+                    showToast('Info', 'Please select a project first', 'info');
+                }
+            });
+        }
+        
+        // Quick action buttons
+        const createTaskBtn = document.getElementById('createTaskBtn');
+        const quickMeetingBtn = document.getElementById('quickMeetingBtn');
+        const quickReportBtn = document.getElementById('quickReportBtn');
+        
+        if (createTaskBtn) {
+            createTaskBtn.addEventListener('click', function() {
+                openModal('newTaskModal');
+            });
+        }
+        
+        if (quickMeetingBtn) {
+            quickMeetingBtn.addEventListener('click', function() {
+                showToast('Info', 'Meeting scheduling feature coming soon!', 'info');
+            });
+        }
+        
+        if (quickReportBtn) {
+            quickReportBtn.addEventListener('click', function() {
+                showToast('Info', 'Report generation feature coming soon!', 'info');
+            });
+        }
+        
+        // Animate progress bars on scroll
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const progressBar = entry.target;
+                    if (progressBar.classList.contains('progress-bar')) {
+                        const width = progressBar.style.width || progressBar.getAttribute('data-width');
+                        if (width) {
+                            progressBar.style.transition = 'width 1s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                            progressBar.style.width = width;
+                            
+                            // Add animation class
+                            progressBar.classList.add('animate-progress');
+                            
+                            // Remove observer after animation
+                            observer.unobserve(progressBar);
+                        }
+                    }
+                }
+            });
+        }, { threshold: 0.2 });
+        
+        document.querySelectorAll('.progress-bar').forEach(bar => {
+            observer.observe(bar);
+        });
+        
+        // Add hover effects to cards
+        document.querySelectorAll('.card-hover').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-2px)';
+                this.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0)';
+                this.style.boxShadow = '';
+            });
+        });
+        
+        // Enhanced tooltips
+        document.querySelectorAll('[data-tooltip]').forEach(element => {
+            element.addEventListener('mouseenter', function(e) {
+                const tooltip = document.createElement('div');
+                tooltip.className = 'fixed bg-ink-black text-white text-xs px-3 py-2 rounded-lg shadow-xl z-50 opacity-0 transition-opacity duration-200';
+                tooltip.textContent = this.getAttribute('data-tooltip');
+                document.body.appendChild(tooltip);
+                
+                const rect = this.getBoundingClientRect();
+                tooltip.style.top = (rect.top - tooltip.offsetHeight - 8) + 'px';
+                tooltip.style.left = (rect.left + rect.width/2 - tooltip.offsetWidth/2) + 'px';
+                
+                this._tooltip = tooltip;
+                
+                // Fade in
+                setTimeout(() => {
+                    tooltip.classList.remove('opacity-0');
+                    tooltip.classList.add('opacity-100');
+                }, 10);
+            });
+            
+            element.addEventListener('mouseleave', function() {
+                if (this._tooltip) {
+                    this._tooltip.classList.remove('opacity-100');
+                    this._tooltip.classList.add('opacity-0');
+                    
+                    setTimeout(() => {
+                        if (this._tooltip) {
+                            this._tooltip.remove();
+                            delete this._tooltip;
+                        }
+                    }, 200);
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

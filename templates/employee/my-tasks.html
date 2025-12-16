@@ -1,0 +1,1270 @@
+{% extends 'employee/base.html' %}
+{# filters moved to view; context provides current_date, week_end, and prefiltered lists #}
+
+{% block title %}My Tasks - ProjectFlow{% endblock %}
+
+{% block modal %}
+<!-- Task Detail Modal -->
+<div class="modal-backdrop hidden fixed inset-0 bg-black bg-opacity-50 z-40" id="taskModalBackdrop"></div>
+<div class="modal hidden fixed inset-0 z-50 overflow-y-auto" id="taskModal">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg w-full max-w-3xl p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h3 id="modalTaskTitle" class="text-2xl font-bold text-ink-black">Task Details</h3>
+                <button id="closeTaskModal" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Main Content -->
+                <div>
+                    <!-- Progress & Time Tracking -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <h4 class="text-lg font-semibold text-ink-black mb-2">Progress</h4>
+                            <div class="progress-bar mb-2">
+                                <div id="modalTaskProgressBar" class="progress-fill bg-dark-cyan" style="width: 0%"></div>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span id="modalTaskProgressText" class="text-gray-600">0% complete</span>
+                                <span id="modalTaskStatus" class="font-medium text-dark-cyan">Status</span>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h4 class="text-lg font-semibold text-ink-black mb-2">Time Tracking</h4>
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-600">Estimated Hours:</span>
+                                    <span id="modalTaskHoursEstimated" class="font-medium">0h</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-600">Actual Hours:</span>
+                                    <span id="modalTaskHoursActual" class="font-medium">0h</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-600">Remaining:</span>
+                                    <span id="modalTaskHoursRemaining" class="font-medium text-dark-cyan">0h</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Comments Section -->
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="text-lg font-semibold text-ink-black">Comments & Discussion</h4>
+                            <span id="modalCommentsCount" class="text-sm text-gray-500">0 comments</span>
+                        </div>
+                        <div id="modalTaskComments" class="space-y-4"></div>
+                        <div class="mt-4">
+                            <textarea id="commentInput" class="w-full px-4 py-3 border border-gray-300 rounded-lg" rows="2" placeholder="Add a comment..."></textarea>
+                            <div class="flex justify-end mt-2">
+                                <button id="submitComment" class="px-4 py-2 bg-dark-teal text-white rounded-lg hover:bg-dark-teal-dark transition">Post Comment</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Sidebar -->
+                <div class="space-y-6">
+                    <!-- Task Details -->
+                    <div class="bg-gray-50 rounded-xl p-5">
+                        <h4 class="text-lg font-semibold text-ink-black mb-3">Task Details</h4>
+                        <div class="space-y-3">
+                            <div>
+                                <p class="text-sm text-gray-500">Created Date</p>
+                                <p id="modalTaskCreated" class="font-medium">--</p>
+                            </div>
+                            
+                            <div>
+                                <p class="text-sm text-gray-500">Due Date</p>
+                                <p id="modalTaskDueDate" class="font-medium">--</p>
+                            </div>
+                            
+                            <div>
+                                <p class="text-sm text-gray-500">Attachments</p>
+                                <div id="modalTaskAttachments" class="mt-1 space-y-2"></div>
+                            </div>
+
+                            <div class="mt-4" id="modalSubtaskWrapper">
+                                <p class="text-sm text-gray-500">Subtasks</p>
+                                <div id="modalSubtaskSummary" class="text-xs text-gray-600 mt-1"></div>
+                                <div id="modalTaskSubtasks" class="mt-2 space-y-2"></div>
+                                <div class="mt-3 flex space-x-2">
+                                    <input id="newSubtaskTitle" type="text" placeholder="New subtask title" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg" />
+                                    <button id="addSubtaskBtn" class="px-3 py-2 bg-dark-teal text-white rounded-lg">Add</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <!-- Header Section -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+        <div>
+            <h3 class="text-2xl font-bold text-ink-black">My Tasks</h3>
+            <p class="text-gray-600">Tasks assigned to you. Submit completed work for PM approval.</p>
+        </div>
+        
+        <div class="flex space-x-3 mt-4 md:mt-0">
+            <button class="px-4 py-2 border border-dark-teal text-dark-teal rounded-lg flex items-center hover:bg-dark-teal hover:text-white transition" id="filterBtn">
+                <i class="fas fa-filter mr-2"></i>
+                Filter Tasks
+            </button>
+            <button class="px-4 py-2 border border-dark-teal text-dark-teal rounded-lg flex items-center hover:bg-dark-teal hover:text-white transition" id="sortBtn">
+                <i class="fas fa-sort mr-2"></i>
+                Sort By
+            </button>
+        </div>
+    </div>
+    
+    <!-- Task Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-xl shadow-sm p-5 card-hover transition">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">Assigned Tasks</p>
+                    <h3 class="text-2xl font-bold text-ink-black mt-1">{{ tasks.count }}</h3>
+                </div>
+                <div class="p-3 bg-dark-teal bg-opacity-10 rounded-lg">
+                    <i class="fas fa-tasks text-dark-teal text-xl"></i>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-3">Total assigned by PM</p>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-sm p-5 card-hover transition">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">Ready for Review</p>
+                    <h3 class="text-2xl font-bold text-ink-black mt-1">{{ review_count }}</h3>
+                </div>
+                <div class="p-3 bg-golden-orange bg-opacity-10 rounded-lg">
+                    <i class="fas fa-eye text-golden-orange text-xl"></i>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-3">Awaiting PM approval</p>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-sm p-5 card-hover transition">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">This Week's Deadline</p>
+                    <h3 class="text-2xl font-bold text-ink-black mt-1">{{ week_tasks_count }}</h3>
+                </div>
+                <div class="p-3 bg-dark-cyan bg-opacity-10 rounded-lg">
+                    <i class="fas fa-calendar-day text-dark-cyan text-xl"></i>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-3">Due within 7 days</p>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-sm p-5 card-hover transition">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm">Time Logged Today</p>
+                    <h3 class="text-2xl font-bold text-ink-black mt-1">{{ time_logged_today|floatformat:1 }}h</h3>
+                </div>
+                <div class="p-3 bg-pearl-aqua bg-opacity-10 rounded-lg">
+                    <i class="fas fa-hourglass-half text-pearl-aqua text-xl"></i>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-3">Daily target: 8h</p>
+        </div>
+    </div>
+    
+    <!-- Workflow Status Tabs -->
+    <div class="flex flex-wrap mb-6">
+        <button class="tab-btn px-4 py-2 bg-dark-teal text-white rounded-l-lg hover:bg-dark-teal-dark transition" data-status="all">
+            All Tasks
+        </button>
+        <button class="tab-btn px-4 py-2 border border-dark-teal border-l-0 text-dark-teal hover:bg-dark-teal hover:text-white transition" data-status="todo">
+            To Do
+        </button>
+        <button class="tab-btn px-4 py-2 border border-dark-teal border-l-0 text-dark-teal hover:bg-dark-teal hover:text-white transition" data-status="in_progress">
+            In Progress
+        </button>
+        <button class="tab-btn px-4 py-2 border border-dark-teal border-l-0 text-dark-teal hover:bg-dark-teal hover:text-white transition" data-status="review">
+            In Review
+        </button>
+        <button class="tab-btn px-4 py-2 border border-dark-teal border-l-0 rounded-r-lg text-dark-teal hover:bg-dark-teal hover:text-white transition" data-status="done">
+            Approved
+        </button>
+        <div class="ml-4 flex-1 md:flex-none">
+            <div class="relative">
+                <input type="text" id="taskSearch" placeholder="Search tasks..." class="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dark-teal focus:border-transparent">
+                <i class="fas fa-search absolute right-3 top-3 text-gray-400"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Task List Column -->
+    <div class="lg:col-span-2">
+        <!-- Today's Priority Tasks -->
+        {% if today_priority_tasks %}
+        <div class="mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-ink-black">Today's Priority</h3>
+                <button class="text-dark-teal text-sm font-medium hover:text-dark-teal-dark view-priority-tasks">View All</button>
+            </div>
+            
+            <div class="space-y-4">
+                {% for task in today_priority_tasks|slice:":3" %}
+                <div class="task-card bg-white rounded-xl shadow-sm p-5 card-hover transition task-status-{{ task.status }}" 
+                     data-task-id="{{ task.id }}"
+                     data-status="{{ task.status }}"
+                     data-priority="{{ task.priority }}">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex justify-between">
+                                <h4 class="font-medium text-lg text-ink-black">{{ task.title }}</h4>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-xs task-type-{{ task.task_type }} px-2 py-1 rounded-full">
+                                        {{ task.get_task_type_display }}
+                                    </span>
+                                    <span class="text-xs priority-{{ task.priority }} px-2 py-1 rounded-full">
+                                        {{ task.get_priority_display }}
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center mt-2">
+                                <span class="text-sm text-gray-500 mr-3">
+                                    <i class="fas fa-project-diagram mr-1"></i>
+                                    {{ task.project.name|default:"No Project" }}
+                                </span>
+                                {% if task.project.project_manager %}
+                                <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                                    <i class="fas fa-user-tie mr-1"></i>
+                                    PM: {{ task.project.project_manager.get_full_name }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            
+                            <p class="text-gray-600 mt-3">{{ task.description|truncatechars:200 }}</p>
+                            
+                            <!-- Workflow Status -->
+                            <div class="mt-4 flex items-center">
+                                <div class="text-xs text-gray-500 mr-4">
+                                    <i class="fas fa-exchange-alt mr-1"></i>
+                                    Workflow:
+                                </div>
+                                <div class="flex space-x-1">
+                                    {% for step in workflow_steps %}
+                                    <span class="text-xs px-2 py-1 {% if task.status == step %}bg-{{ step }}-color text-white{% else %}bg-gray-200 text-gray-600{% endif %} rounded">
+                                        {{ step|title }}
+                                    </span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center mt-4">
+                                <div class="flex items-center text-xs text-gray-500 mr-4">
+                                    <i class="fas fa-paperclip mr-1"></i>
+                                    <span>{{ task.files.count }} attachment{{ task.files.count|pluralize }}</span>
+                                </div>
+                                <div class="flex items-center text-xs text-gray-500 mr-4">
+                                    <i class="fas fa-clock mr-1"></i>
+                                    <span>Due: {{ task.due_date|date:"M d" }}</span>
+                                </div>
+                                <div class="flex items-center text-xs text-gray-500">
+                                    <i class="fas fa-hourglass-half mr-1"></i>
+                                    <span>{{ task.actual_hours|default:0 }}h spent / {{ task.estimated_hours|default:0 }}h est.</span>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center mt-4">
+                                <div class="flex-1 mr-4">
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span class="text-gray-500">Progress</span>
+                                        <span class="font-medium text-{{ task.status }}-color">{% if task.subtasks_count and task.subtasks_count > 0 %}{{ task.subtasks_completed }}/{{ task.subtasks_count }} ({{ task.progress }}%){% else %}{{ task.progress|default:0 }}%{% endif %}</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill bg-{{ task.status }}-color" style="width: {{ task.progress|default:0 }}%"></div>
+                                    </div>
+                                </div>
+                                <div class="flex space-x-2">
+                                    {% if task.status == 'in_progress' %}
+                                    <button class="px-3 py-2 bg-dark-cyan text-white text-sm rounded-lg flex items-center submit-review-btn">
+                                        <i class="fas fa-paper-plane mr-2"></i>
+                                        Submit for Review
+                                    </button>
+                                    {% elif task.status == 'todo' %}
+                                    <button class="px-3 py-2 bg-golden-orange text-white text-sm rounded-lg flex items-center start-task-btn">
+                                        <i class="fas fa-play mr-2"></i>
+                                        Start Task
+                                    </button>
+                                    {% endif %}
+                                    <button class="px-3 py-2 border border-dark-teal text-dark-teal text-sm rounded-lg flex items-center view-task-btn">
+                                        <i class="fas fa-eye mr-2"></i>
+                                        Details
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- All Tasks -->
+        <div>
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-ink-black">All Assigned Tasks</h3>
+                <div class="text-sm text-gray-500">
+                    Showing <span id="taskCount">{{ tasks.count }}</span> of {{ tasks.count }} tasks
+                </div>
+            </div>
+            
+            <div class="space-y-4" id="taskList">
+                {% for task in tasks %}
+                <div class="task-card bg-white rounded-xl shadow-sm p-5 card-hover transition task-status-{{ task.status }}"
+                     data-task-id="{{ task.id }}"
+                     data-status="{{ task.status }}"
+                     data-priority="{{ task.priority }}"
+                     data-project="{{ task.project.name|default:'' }}">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex justify-between">
+                                <h4 class="font-medium text-lg text-ink-black">{{ task.title }}</h4>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-xs task-type-{{ task.task_type }} px-2 py-1 rounded-full">
+                                        {{ task.get_task_type_display }}
+                                    </span>
+                                    <span class="text-xs priority-{{ task.priority }} px-2 py-1 rounded-full">
+                                        {{ task.get_priority_display }}
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center mt-2">
+                                <span class="text-sm text-gray-500 mr-3">
+                                    <i class="fas fa-project-diagram mr-1"></i>
+                                    {{ task.project.name|default:"No Project" }}
+                                </span>
+                                {% if task.project.project_manager %}
+                                <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                                    <i class="fas fa-user-tie mr-1"></i>
+                                    PM: {{ task.project.project_manager.get_full_name }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            
+                            <p class="text-gray-600 mt-3">{{ task.description|truncatechars:200 }}</p>
+                            
+                            {% if task.status == 'review' %}
+                            <!-- Review Status -->
+                            <div class="mt-3 p-3 bg-yellow-50 border border-yellow-100 rounded-lg">
+                                <div class="flex items-start">
+                                    <i class="fas fa-clock text-golden-orange mt-1 mr-2"></i>
+                                    <div>
+                                        <p class="text-sm font-medium text-golden-orange">Submitted for Review</p>
+                                        <p class="text-xs text-gray-600">
+                                            Waiting for PM approval.
+                                            {% if task.updated_at %}
+                                            Submitted on {{ task.updated_at|date:"M d" }}.
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            {% elif task.status == 'done' %}
+                            <!-- Approved Status -->
+                            <div class="mt-3 p-3 bg-green-50 border border-green-100 rounded-lg">
+                                <div class="flex items-start">
+                                    <i class="fas fa-check-circle text-pearl-aqua mt-1 mr-2"></i>
+                                    <div>
+                                        <p class="text-sm font-medium text-pearl-aqua">Approved by PM</p>
+                                        <p class="text-xs text-gray-600">
+                                            {% if task.completed_at %}
+                                            Completed on {{ task.completed_at|date:"M d" }}.
+                                            {% else %}
+                                            Task marked as completed.
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <!-- Workflow Status -->
+                            <div class="mt-4 flex items-center">
+                                <div class="text-xs text-gray-500 mr-4">
+                                    <i class="fas fa-exchange-alt mr-1"></i>
+                                    Workflow:
+                                </div>
+                                <div class="flex space-x-1">
+                                    {% for step in workflow_steps %}
+                                    <span class="text-xs px-2 py-1 {% if task.status == step %}bg-{{ step }}-color text-white{% else %}bg-gray-200 text-gray-600{% endif %} rounded">
+                                        {{ step|title }}
+                                    </span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="flex items-center mt-4">
+                                <div class="flex items-center text-xs text-gray-500 mr-4">
+                                    <i class="fas fa-paperclip mr-1"></i>
+                                    <span>{{ task.files.count }} attachment{{ task.files.count|pluralize }}</span>
+                                </div>
+                                <div class="flex items-center text-xs text-gray-500 mr-4">
+                                    <i class="fas fa-clock mr-1"></i>
+                                    <span>
+                                        {% if task.due_date %}
+                                            Due: {{ task.due_date|date:"M d" }}
+                                        {% else %}
+                                            No due date
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                <div class="flex items-center text-xs text-gray-500">
+                                    <i class="fas fa-hourglass-half mr-1"></i>
+                                    <span>{{ task.actual_hours|default:0 }}h spent / {{ task.estimated_hours|default:0 }}h est.</span>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center mt-4">
+                                <div class="flex-1 mr-4">
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span class="text-gray-500">Progress</span>
+                                        <span class="font-medium text-{{ task.status }}-color">{{ task.progress|default:0 }}%</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill bg-{{ task.status }}-color" style="width: {{ task.progress|default:0 }}%"></div>
+                                    </div>
+                                </div>
+                                <div class="flex space-x-2">
+                                    {% if task.status == 'todo' %}
+                                    <button class="px-3 py-2 bg-golden-orange text-white text-sm rounded-lg flex items-center start-task-btn">
+                                        <i class="fas fa-play mr-2"></i>
+                                        Start Task
+                                    </button>
+                                    {% elif task.status == 'in_progress' %}
+                                    <button class="px-3 py-2 bg-dark-cyan text-white text-sm rounded-lg flex items-center submit-review-btn">
+                                        <i class="fas fa-paper-plane mr-2"></i>
+                                        Submit for Review
+                                    </button>
+                                    {% endif %}
+                                    <button class="px-3 py-2 border border-dark-teal text-dark-teal text-sm rounded-lg flex items-center view-task-btn">
+                                        <i class="fas fa-eye mr-2"></i>
+                                        {% if task.status == 'review' or task.status == 'done' %}View Details{% else %}Details{% endif %}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="bg-white rounded-xl shadow-sm p-8 text-center">
+                    <i class="fas fa-tasks text-4xl text-gray-300 mb-4"></i>
+                    <h3 class="text-lg font-medium text-gray-600 mb-2">No tasks assigned</h3>
+                    <p class="text-gray-500">You don't have any tasks assigned to you yet.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="space-y-6">
+        <!-- Today's Standup Summary -->
+        {% if standup %}
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-ink-black">Today's Standup</h3>
+                <span class="text-xs bg-pearl-aqua text-ink-black px-2 py-1 rounded">Submitted</span>
+            </div>
+            <div class="space-y-3">
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">Yesterday's Work</p>
+                    <p class="text-sm">{{ standup.yesterday_work|truncatechars:100 }}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">Today's Plan</p>
+                    <p class="text-sm">{{ standup.today_plan|truncatechars:100 }}</p>
+                </div>
+                {% if standup.blockers %}
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">Blockers</p>
+                    <p class="text-sm">{{ standup.blockers|truncatechars:100 }}</p>
+                </div>
+                {% endif %}
+            </div>
+            <button class="w-full mt-4 px-4 py-2 border border-dark-teal text-dark-teal rounded-lg flex items-center justify-center hover:bg-dark-teal hover:text-white transition" id="updateStandupBtn">
+                <i class="fas fa-edit mr-2"></i>
+                Update Standup
+            </button>
+        </div>
+        {% else %}
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-ink-black">Today's Standup</h3>
+                <span class="text-xs bg-golden-orange text-white px-2 py-1 rounded">Not Submitted</span>
+            </div>
+            <p class="text-sm text-gray-600 mb-4">You haven't submitted your standup update for today.</p>
+            <button class="w-full px-4 py-2 bg-dark-teal text-white rounded-lg flex items-center justify-center hover:bg-dark-teal-dark transition" id="submitStandupBtn">
+                <i class="fas fa-plus mr-2"></i>
+                Submit Standup
+            </button>
+        </div>
+        {% endif %}
+        
+        <!-- Task Statistics -->
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <h3 class="text-lg font-semibold text-ink-black mb-4">Task Statistics</h3>
+            <div class="space-y-4">
+                <div>
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="text-gray-600">By Status</span>
+                    </div>
+                    <div class="space-y-2">
+                        {% for status, count in status_counts.items %}
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 bg-{{ status }}-color rounded-full mr-2"></div>
+                                <span class="text-sm">{{ status|title }}</span>
+                            </div>
+                            <span class="text-sm font-medium">{{ count }} task{{ count|pluralize }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                {% if time_distribution_list %}
+                <div class="pt-4 border-t border-gray-200">
+                    <div class="flex justify-between text-sm mb-3">
+                        <span class="text-gray-600">Time Distribution</span>
+                        <span class="font-medium">{{ total_hours_this_week|floatformat:1 }}h this week</span>
+                    </div>
+                    <div class="space-y-2">
+                        {% for item in time_distribution_list|slice:":3" %}
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span>{{ item.project|truncatechars:20 }}</span>
+                                <span>{{ item.hours|floatformat:1 }}h</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill bg-dark-teal" style="width: {{ item.percentage }}%"></div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Upcoming Deadlines -->
+        {% if upcoming_deadlines %}
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-ink-black">Upcoming Deadlines</h3>
+                <a href="{% url 'employee:calendar' %}" class="text-dark-teal text-sm font-medium hover:text-dark-teal-dark">View Calendar</a>
+            </div>
+            
+            <div class="space-y-3">
+                {% for deadline in upcoming_deadlines|slice:":3" %}
+                <div class="flex justify-between items-center p-3 {% if deadline.days_remaining <= 1 %}bg-red-50{% elif deadline.days_remaining <= 3 %}bg-yellow-50{% else %}bg-blue-50{% endif %} rounded-lg hover:shadow-sm transition">
+                    <div>
+                        <p class="text-sm font-medium">{{ deadline.title|truncatechars:20 }}</p>
+                        <p class="text-xs text-gray-500">{{ deadline.date|date:"M d" }}</p>
+                    </div>
+                    <span class="text-xs px-2 py-1 {% if deadline.days_remaining <= 1 %}bg-red-500{% elif deadline.days_remaining <= 3 %}bg-golden-orange{% else %}bg-dark-cyan{% endif %} text-white rounded-full">
+                        {% if deadline.days_remaining == 0 %}
+                            Today
+                        {% elif deadline.days_remaining == 1 %}
+                            Tomorrow
+                        {% else %}
+                            {{ deadline.days_remaining }} days
+                        {% endif %}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Submit for Review Modal -->
+<div id="submitModal" class="fixed inset-0 overflow-y-auto hidden" style="z-index:9999;">
+    <div class="fixed inset-0 bg-black bg-opacity-50" style="z-index:9998;"></div>
+    <div class="flex items-center justify-center min-h-screen p-4" style="z-index:9999; position:relative;">
+        <div class="bg-white rounded-lg w-full max-w-md p-6" style="position:relative; z-index:10000;">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="submitModalTitle" class="text-lg font-semibold">Submit Task</h3>
+                <button id="closeSubmitModal" class="text-gray-500 hover:text-gray-700">&times;</button>
+            </div>
+            <p id="submitModalBody" class="text-sm text-gray-600 mb-4">Are you sure you want to submit this task for review?</p>
+            <div class="mb-4">
+                <label class="text-sm text-gray-600 mb-2 block">Attach screenshot(s) (optional)</label>
+                <input id="submitFiles" type="file" accept="image/*,.png,.jpg,.jpeg" multiple class="w-full" />
+            </div>
+            <div class="flex justify-end space-x-2">
+                <button id="cancelSubmitBtn" class="px-4 py-2 border rounded hover:bg-gray-50 transition">Cancel</button>
+                <button id="confirmSubmitBtn" class="px-4 py-2 bg-dark-cyan text-white rounded hover:bg-dark-cyan-dark transition">Submit</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Task data for the modal (from backend)
+const taskData = {{ task_data_json|safe }};
+const csrfToken = "{{ csrf_token }}";
+const currentUserId = "{{ request.user.id }}";
+const currentUserName = "{{ request.user.get_full_name|default:request.user.username }}";
+const updateTaskStatusUrl = "{% url 'employee:update_task_status' 0 %}"; // replace '0' with taskId when used
+const addCommentUrl = "{% url 'employee:add_comment' 0 %}"; // replace '0' with taskId when used
+const createSubtaskUrl = "{% url 'employee:create_subtask' 0 %}"; // replace '0' with taskId when used
+const updateSubtaskUrl = "{% url 'employee:update_subtask' 0 %}"; // replace '0' with subtaskId when used
+const submitStandupUrl = "{% url 'employee:submit_standup' %}";
+let submitModalCurrentTask = null;
+let _taskModalWasOpen = false;
+
+// Helper to escape HTML in inserted strings
+function escapeHtml(unsafe) {
+    if (!unsafe && unsafe !== 0) return '';
+    return String(unsafe)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// Get CSRF token from cookie
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Tab filtering functionality
+    document.querySelectorAll('.tab-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const status = this.getAttribute('data-status');
+            
+            // Update active tab
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-dark-teal', 'text-white');
+                btn.classList.add('border', 'border-dark-teal', 'text-dark-teal');
+            });
+            
+            this.classList.remove('border', 'border-dark-teal', 'text-dark-teal');
+            this.classList.add('bg-dark-teal', 'text-white');
+            
+            // Filter tasks
+            filterTasks(status);
+        });
+    });
+
+    function filterTasks(status) {
+        const taskCards = document.querySelectorAll('.task-card');
+        let visibleCount = 0;
+        
+        taskCards.forEach(card => {
+            const cardStatus = card.getAttribute('data-status');
+            
+            if (status === 'all' || cardStatus === status) {
+                card.style.display = 'block';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+        
+        document.getElementById('taskCount').textContent = visibleCount;
+    }
+
+    // Search functionality
+    document.getElementById('taskSearch').addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const taskCards = document.querySelectorAll('.task-card');
+        let visibleCount = 0;
+        
+        taskCards.forEach(card => {
+            const title = card.querySelector('h4').textContent.toLowerCase();
+            const description = card.querySelector('.text-gray-600').textContent.toLowerCase();
+            const project = card.getAttribute('data-project').toLowerCase();
+            
+            if (title.includes(searchTerm) || description.includes(searchTerm) || project.includes(searchTerm)) {
+                card.style.display = 'block';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+        
+        document.getElementById('taskCount').textContent = visibleCount;
+    });
+
+    // Open task detail modal
+    document.querySelectorAll('.view-task-btn').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const taskCard = this.closest('.task-card');
+            const taskId = taskCard.getAttribute('data-task-id');
+            openTaskModal(taskId);
+        });
+    });
+
+    // Open task modal by clicking on task card
+    document.querySelectorAll('.task-card').forEach(card => {
+        card.addEventListener('click', function(e) {
+            if (!e.target.closest('button')) {
+                const taskId = this.getAttribute('data-task-id');
+                openTaskModal(taskId);
+            }
+        });
+    });
+
+    // Start task buttons
+    document.querySelectorAll('.start-task-btn').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const taskCard = this.closest('.task-card');
+            const taskId = taskCard.getAttribute('data-task-id');
+            startTask(taskId);
+        });
+    });
+
+    // Submit for review buttons
+    document.querySelectorAll('.submit-review-btn').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const taskCard = this.closest('.task-card');
+            const taskId = taskCard.getAttribute('data-task-id');
+            openSubmitModal(taskId);
+        });
+    });
+
+    // Standup buttons
+    const submitStandupBtn = document.getElementById('submitStandupBtn');
+    const updateStandupBtn = document.getElementById('updateStandupBtn');
+    
+    if (submitStandupBtn) {
+        submitStandupBtn.addEventListener('click', function() {
+            window.location.href = "{% url 'employee:dashboard' %}?show_standup=true";
+        });
+    }
+    
+    if (updateStandupBtn) {
+        updateStandupBtn.addEventListener('click', function() {
+            window.location.href = "{% url 'employee:dashboard' %}?show_standup=true";
+        });
+    }
+});
+
+function startTask(taskId) {
+    const taskCard = document.querySelector(`.task-card[data-task-id="${taskId}"]`);
+    const task = taskData[taskId];
+    
+    if (!task || task.status !== 'todo') return;
+    
+    // Update task status via AJAX
+    fetch(updateTaskStatusUrl.replace('0', taskId), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: 'status=in_progress'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update local task data
+            task.status = 'in_progress';
+            task.progress = 10;
+            
+            // Update task card UI
+            updateTaskCardUI(taskId, 'in_progress', 10);
+            
+            // Show notification
+            showNotification('Task Started', `You have started working on "${task.title}"`, 'success');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Error', 'Failed to start task', 'error');
+    });
+}
+
+function updateTaskCardUI(taskId, status, progress) {
+    const taskCard = document.querySelector(`.task-card[data-task-id="${taskId}"]`);
+    if (!taskCard) return;
+    
+    // Update status classes
+    taskCard.setAttribute('data-status', status);
+    taskCard.className = taskCard.className.replace(/task-status-\w+/, `task-status-${status}`);
+    
+    // Update progress bar
+    const progressBar = taskCard.querySelector('.progress-fill');
+    const progressText = taskCard.querySelector('.font-medium');
+    
+    if (progressBar) {
+        progressBar.style.width = `${progress}%`;
+        progressBar.className = progressBar.className.replace(/bg-\w+-color/, `bg-${status}-color`);
+    }
+    
+    if (progressText) {
+        progressText.textContent = `${progress}%`;
+        progressText.className = progressText.className.replace(/text-\w+-color/, `text-${status}-color`);
+    }
+    
+    // Update button
+    const actionBtn = taskCard.querySelector('.start-task-btn, .submit-review-btn');
+    if (actionBtn) {
+        if (status === 'in_progress') {
+            actionBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Submit for Review';
+            actionBtn.className = 'px-3 py-2 bg-dark-cyan text-white text-sm rounded-lg flex items-center submit-review-btn';
+            actionBtn.onclick = function(e) {
+                e.stopPropagation();
+                openSubmitModal(taskId);
+            };
+        }
+    }
+}
+
+function closeModal(modalEl) {
+    if (!modalEl) return;
+    modalEl.classList.add('hidden');
+    modalEl.innerHTML = '';
+}
+
+function openTaskModal(taskId) {
+    const task = taskData[taskId];
+    const modal = document.getElementById('taskModal');
+    const backdrop = document.getElementById('taskModalBackdrop');
+    if (!task || !modal) return;
+
+    // Show modal and backdrop
+    modal.classList.remove('hidden');
+    backdrop.classList.remove('hidden');
+
+    // Close modal handlers
+    document.getElementById('closeTaskModal').addEventListener('click', function() {
+        modal.classList.add('hidden');
+        backdrop.classList.add('hidden');
+    });
+
+    backdrop.addEventListener('click', function() {
+        modal.classList.add('hidden');
+        backdrop.classList.add('hidden');
+    });
+
+    // Populate modal fields from task data
+    const setText = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text == null ? '' : text;
+    };
+
+    setText('modalTaskTitle', task.title || '');
+    const progressBar = document.getElementById('modalTaskProgressBar');
+    const progressText = document.getElementById('modalTaskProgressText');
+    const statusText = document.getElementById('modalTaskStatus');
+    if (progressBar) progressBar.style.width = (task.progress || 0) + '%';
+    if (progressText) progressText.textContent = (task.progress || 0) + '% complete';
+    if (statusText) statusText.textContent = (task.status || '').replace('_', ' ').toUpperCase();
+
+    setText('modalTaskHoursEstimated', (task.hours_estimated || 0) + 'h');
+    setText('modalTaskHoursActual', (task.hours_actual || 0) + 'h');
+    const remaining = (task.hours_estimated || 0) - (task.hours_actual || 0);
+    setText('modalTaskHoursRemaining', (remaining > 0 ? remaining : 0) + 'h');
+    setText('modalTaskCreated', task.created || '');
+    setText('modalTaskDueDate', task.due_date || '--');
+
+    // Attachments
+    const attachmentsEl = document.getElementById('modalTaskAttachments');
+    if (attachmentsEl) {
+        attachmentsEl.innerHTML = '';
+        (task.attachments_list || []).forEach(a => {
+            const div = document.createElement('div');
+            const link = document.createElement('a');
+            link.href = a.url || '#';
+            link.textContent = a.name || 'Attachment';
+            link.className = 'text-sm text-dark-teal hover:underline';
+            link.target = '_blank';
+            div.appendChild(link);
+            attachmentsEl.appendChild(div);
+        });
+    }
+
+    // Comments
+    const commentsEl = document.getElementById('modalTaskComments');
+    const commentsCountEl = document.getElementById('modalCommentsCount');
+    if (commentsEl) {
+        commentsEl.innerHTML = '';
+        (task.comments || []).forEach(c => {
+            const cdiv = document.createElement('div');
+            cdiv.className = 'p-3 bg-gray-50 rounded-lg';
+            const author = document.createElement('div');
+            author.className = 'text-sm font-medium';
+            author.textContent = c.author || 'Unknown';
+            const created = document.createElement('div');
+            created.className = 'text-xs text-gray-500 mb-1';
+            created.textContent = c.created_at || '';
+            const content = document.createElement('div');
+            content.className = 'text-sm text-gray-700';
+            content.textContent = c.content || '';
+            cdiv.appendChild(author);
+            cdiv.appendChild(created);
+            cdiv.appendChild(content);
+            commentsEl.appendChild(cdiv);
+        });
+    }
+    if (commentsCountEl) commentsCountEl.textContent = (task.comments || []).length + ' comments';
+
+    // Wire up comment submit
+    const submitCommentBtn = document.getElementById('submitComment');
+    const commentInput = document.getElementById('commentInput');
+    if (submitCommentBtn && commentInput) {
+        submitCommentBtn.onclick = function() {
+            const content = commentInput.value.trim();
+            if (!content) return;
+
+            fetch(addCommentUrl.replace('0', taskId), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({content: content})
+            }).then(res => res.json())
+            .then(data => {
+                if (data && data.id) {
+                    // Append new comment to DOM
+                    const cdiv = document.createElement('div');
+                    cdiv.className = 'p-3 bg-gray-50 rounded-lg';
+                    const author = document.createElement('div');
+                    author.className = 'text-sm font-medium';
+                    author.textContent = data.author || (currentUserName || 'You');
+                    const created = document.createElement('div');
+                    created.className = 'text-xs text-gray-500 mb-1';
+                    created.textContent = data.created_at || '';
+                    const contentEl = document.createElement('div');
+                    contentEl.className = 'text-sm text-gray-700';
+                    contentEl.textContent = data.content || content;
+                    cdiv.appendChild(author);
+                    cdiv.appendChild(created);
+                    cdiv.appendChild(contentEl);
+                    commentsEl.insertBefore(cdiv, commentsEl.firstChild);
+                    // Update count and clear
+                    if (commentsCountEl) commentsCountEl.textContent = (parseInt((commentsCountEl.textContent||'0')) + 1) + ' comments';
+                    commentInput.value = '';
+                }
+            }).catch(err => {
+                console.error('Comment error', err);
+                showNotification('Error', 'Failed to post comment', 'error');
+            });
+        };
+    }
+    // Subtasks rendering & creation
+    const subtasksEl = document.getElementById('modalTaskSubtasks');
+    const subtasksSummaryEl = document.getElementById('modalSubtaskSummary');
+    const newSubtaskInput = document.getElementById('newSubtaskTitle');
+    const addSubtaskBtn = document.getElementById('addSubtaskBtn');
+    if (subtasksEl) {
+        subtasksEl.innerHTML = '';
+        // prefer task.subtasks if available, else fallback to activity list
+        const subs = task.subtasks || (task.activity || []).filter(a => a.type === 'subtask');
+        if (Array.isArray(subs)) {
+            subs.forEach(st => {
+                const sdiv = document.createElement('div');
+                sdiv.className = 'flex items-center justify-between p-2 bg-white rounded-lg';
+                const left = document.createElement('div');
+                left.className = 'flex items-center space-x-3';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = !!st.is_completed;
+                checkbox.dataset.subtaskId = st.id || '';
+                checkbox.className = 'subtask-checkbox';
+
+                const titleEl = document.createElement('div');
+                titleEl.className = 'text-sm';
+                titleEl.textContent = st.title || '';
+
+                left.appendChild(checkbox);
+                left.appendChild(titleEl);
+
+                const meta = document.createElement('div');
+                meta.className = 'text-xs text-gray-500';
+                meta.textContent = st.created_at || (st.created && new Date(st.created).toLocaleString()) || '';
+                sdiv.appendChild(left);
+                sdiv.appendChild(meta);
+                subtasksEl.appendChild(sdiv);
+
+                // attach change handler
+                checkbox.addEventListener('change', function(e) {
+                    const subId = this.dataset.subtaskId;
+                    const checked = this.checked;
+                    if (!subId) return;
+                    // send update
+                    fetch(updateSubtaskUrl.replace('0', subId), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({is_completed: checked})
+                    }).then(res => res.json())
+                    .then(data => {
+                        if (data && data.success) {
+                            // update modal summary
+                            if (subtasksSummaryEl) {
+                                if (data.subtasks_total > 0) {
+                                    subtasksSummaryEl.textContent = `${data.subtasks_completed} of ${data.subtasks_total} subtasks completed (${data.progress}%)`;
+                                } else {
+                                    subtasksSummaryEl.textContent = '';
+                                }
+                            }
+                            // update main task card progress and text
+                            const card = document.querySelector(`.task-card[data-task-id="${taskId}"]`);
+                            if (card) {
+                                const progressFill = card.querySelector('.progress-fill');
+                                const progressText = card.querySelector('.font-medium');
+                                if (progressFill) {
+                                    progressFill.style.width = data.progress + '%';
+                                    progressFill.className = progressFill.className.replace(/bg-\w+-color/, `bg-${task.status}-color`);
+                                }
+                                if (progressText) {
+                                    progressText.textContent = `${data.subtasks_completed}/${data.subtasks_total} (${data.progress}%)`;
+                                }
+                            }
+                        } else {
+                            showNotification('Error', data.error || 'Failed to update subtask', 'error');
+                        }
+                    }).catch(err => {
+                        console.error('Subtask update error', err);
+                        showNotification('Error', 'Failed to update subtask', 'error');
+                    });
+                });
+            });
+        }
+        // populate summary
+        try {
+            const total = (typeof task.subtasks_count !== 'undefined') ? task.subtasks_count : (Array.isArray(subs) ? subs.length : 0);
+            const completed = (typeof task.subtasks_completed !== 'undefined') ? task.subtasks_completed : (Array.isArray(subs) ? subs.filter(s=>s.is_completed).length : 0);
+            const pct = total > 0 ? Math.round((completed/total)*100) : (task.progress || 0);
+            if (subtasksSummaryEl) {
+                if (total > 0) {
+                    subtasksSummaryEl.textContent = `${completed} of ${total} subtasks completed (${pct}%)`;
+                } else {
+                    subtasksSummaryEl.textContent = '';
+                }
+            }
+        } catch(e) { console.warn(e); }
+    }
+    if (addSubtaskBtn && newSubtaskInput) {
+        addSubtaskBtn.onclick = function(e) {
+            e.preventDefault();
+            const title = newSubtaskInput.value.trim();
+            if (!title) return;
+            addSubtaskBtn.disabled = true;
+            fetch(createSubtaskUrl.replace('0', taskId), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({title: title})
+            }).then(res => res.json())
+            .then(data => {
+                if (data && data.id) {
+                    if (subtasksEl) {
+                        const sdiv = document.createElement('div');
+                        sdiv.className = 'flex items-center justify-between p-2 bg-white rounded-lg';
+                        const left = document.createElement('div');
+                        left.className = 'flex items-center space-x-3';
+
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.checked = !!data.is_completed;
+                        checkbox.dataset.subtaskId = data.id;
+                        checkbox.className = 'subtask-checkbox';
+
+                        const titleEl = document.createElement('div');
+                        titleEl.className = 'text-sm';
+                        titleEl.textContent = data.title;
+
+                        left.appendChild(checkbox);
+                        left.appendChild(titleEl);
+
+                        const meta = document.createElement('div');
+                        meta.className = 'text-xs text-gray-500';
+                        meta.textContent = data.created_at || '';
+                        sdiv.appendChild(left);
+                        sdiv.appendChild(meta);
+                        subtasksEl.insertBefore(sdiv, subtasksEl.firstChild);
+
+                        // attach handler
+                        checkbox.addEventListener('change', function() {
+                            const subId = this.dataset.subtaskId;
+                            const checked = this.checked;
+                            fetch(updateSubtaskUrl.replace('0', subId), {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': csrfToken,
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                },
+                                body: JSON.stringify({is_completed: checked})
+                            }).then(res => res.json())
+                            .then(data => {
+                                if (data && data.success) {
+                                    if (subtasksSummaryEl) {
+                                        if (data.subtasks_total > 0) {
+                                            subtasksSummaryEl.textContent = `${data.subtasks_completed} of ${data.subtasks_total} subtasks completed (${data.progress}%)`;
+                                        } else {
+                                            subtasksSummaryEl.textContent = '';
+                                        }
+                                    }
+                                    const card = document.querySelector(`.task-card[data-task-id="${taskId}"]`);
+                                    if (card) {
+                                        const progressFill = card.querySelector('.progress-fill');
+                                        const progressText = card.querySelector('.font-medium');
+                                        if (progressFill) progressFill.style.width = data.progress + '%';
+                                        if (progressText) progressText.textContent = `${data.subtasks_completed}/${data.subtasks_total} (${data.progress}%)`;
+                                    }
+                                } else {
+                                    showNotification('Error', data.error || 'Failed to update subtask', 'error');
+                                }
+                            }).catch(err => {
+                                console.error('Subtask update error', err);
+                                showNotification('Error', 'Failed to update subtask', 'error');
+                            });
+                        });
+                    }
+                    newSubtaskInput.value = '';
+                    if (!task.activity) task.activity = [];
+                    task.activity.unshift({type: 'subtask', id: data.id, title: data.title, is_completed: data.is_completed, created_at: data.created_at});
+                } else {
+                    showNotification('Error', 'Failed to add subtask', 'error');
+                }
+            }).catch(err => {
+                console.error('Subtask error', err);
+                showNotification('Error', 'Failed to add subtask', 'error');
+            }).finally(() => {
+                addSubtaskBtn.disabled = false;
+            });
+        };
+    }
+}
+
+function openSubmitModal(taskId) {
+    const task = taskData[taskId];
+    const modal = document.getElementById('submitModal');
+    if (!task || !modal) return;
+
+    // Hide underlying task modal/backdrop if open so submit modal is interactive
+    const parentTaskModal = document.getElementById('taskModal');
+    const parentBackdrop = document.getElementById('taskModalBackdrop');
+    if (parentTaskModal && !parentTaskModal.classList.contains('hidden')) {
+        _taskModalWasOpen = true;
+        parentTaskModal.classList.add('hidden');
+        if (parentBackdrop) parentBackdrop.classList.add('hidden');
+    } else {
+        _taskModalWasOpen = false;
+    }
+
+    submitModalCurrentTask = taskId;
+    modal.classList.remove('hidden');
+
+    // Close modal handlers (assign onclick to avoid duplicate listeners)
+    const cancelBtn = document.getElementById('cancelSubmitBtn');
+    const closeBtn = document.getElementById('closeSubmitModal');
+    const confirmBtn = document.getElementById('confirmSubmitBtn');
+
+    if (cancelBtn) cancelBtn.onclick = function() {
+        modal.classList.add('hidden');
+        if (_taskModalWasOpen && parentTaskModal) {
+            parentTaskModal.classList.remove('hidden');
+            if (parentBackdrop) parentBackdrop.classList.remove('hidden');
+        }
+    };
+
+    if (closeBtn) closeBtn.onclick = function() {
+        modal.classList.add('hidden');
+        if (_taskModalWasOpen && parentTaskModal) {
+            parentTaskModal.classList.remove('hidden');
+            if (parentBackdrop) parentBackdrop.classList.remove('hidden');
+        }
+    };
+
+    // Submit confirmation (replace previous handler)
+    if (confirmBtn) confirmBtn.onclick = function() {
+        const filesInput = document.getElementById('submitFiles');
+        const formData = new FormData();
+        formData.append('status', 'review');
+        if (filesInput && filesInput.files && filesInput.files.length) {
+            for (let i = 0; i < filesInput.files.length; i++) {
+                formData.append('files', filesInput.files[i]);
+            }
+        }
+
+        fetch(updateTaskStatusUrl.replace('0', taskId), {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        }).then(res => res.json ? res.json() : Promise.resolve({success: res.ok}))
+        .then(data => {
+            if (data && data.success) {
+                showNotification('Submitted', 'Task submitted for review', 'success');
+                window.location.reload();
+            } else {
+                showNotification('Error', 'Failed to submit task', 'error');
+            }
+        }).catch(err => {
+            console.error(err);
+            showNotification('Error', 'Failed to submit task', 'error');
+        });
+        modal.classList.add('hidden');
+        if (_taskModalWasOpen && parentTaskModal) {
+            parentTaskModal.classList.remove('hidden');
+            if (parentBackdrop) parentBackdrop.classList.remove('hidden');
+        }
+    };
+}
+
+function showNotification(title, message, type) {
+    // Implementation for showing notifications
+    alert(`${title}: ${message}`);
+}
+
+console.log("My Tasks page loaded with real data");
+</script>
+{% endblock %}

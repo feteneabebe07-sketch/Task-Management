@@ -1,0 +1,11 @@
+Django==5.2.6
+gunicorn
+whitenoise
+dj-database-url
+psycopg2-binary
+mysqlclient
+channels
+channels_redis
+redis
+daphne
+pillow
