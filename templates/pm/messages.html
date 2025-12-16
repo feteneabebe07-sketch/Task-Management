@@ -89,20 +89,157 @@
         color: #666;
         border: 1px solid #e2e8f0;
     }
+    
+    /* Responsive styles */
+    .mobile-sidebar-toggle {
+        display: none;
+        position: fixed;
+        top: 1rem;
+        left: 1rem;
+        z-index: 40;
+        background-color: #005f73;
+        color: white;
+        padding: 0.5rem;
+        border-radius: 50%;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .mobile-back-button {
+        display: none;
+    }
+    
+    @media (max-width: 768px) {
+        .mobile-sidebar-toggle {
+            display: block;
+        }
+        
+        .mobile-back-button {
+            display: block;
+        }
+        
+        #conversationsSidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 30;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        #conversationsSidebar.active {
+            transform: translateX(0);
+        }
+        
+        #chatArea.active {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 20;
+            background-color: white;
+        }
+        
+        #noChatSelected {
+            padding: 1rem;
+        }
+        
+        .modal-content {
+            margin: 1rem;
+            max-height: calc(100vh - 2rem);
+            overflow-y: auto;
+        }
+        
+        .message-sent, .message-received {
+            max-width: 90%;
+        }
+        
+        .conversation-item {
+            padding: 0.75rem !important;
+        }
+        
+        .team-member-item {
+            padding: 0.5rem !important;
+        }
+        
+        .filter-buttons {
+            flex-wrap: wrap;
+            gap: 0.25rem;
+        }
+        
+        .filter-buttons button {
+            padding: 0.375rem 0.75rem !important;
+            font-size: 0.75rem !important;
+        }
+    }
+    
+    @media (max-width: 640px) {
+        .chat-header {
+            padding: 0.75rem !important;
+        }
+        
+        .message-input-container {
+            padding: 0.75rem !important;
+        }
+        
+        .message-input {
+            padding: 0.5rem !important;
+            padding-right: 2.5rem !important;
+        }
+        
+        .avatar-large {
+            width: 2.5rem !important;
+            height: 2.5rem !important;
+            font-size: 0.875rem !important;
+            margin-right: 0.5rem !important;
+        }
+        
+        .avatar-small {
+            width: 1.5rem !important;
+            height: 1.5rem !important;
+            font-size: 0.625rem !important;
+        }
+        
+        .no-chat-content {
+            padding: 1rem;
+        }
+        
+        .no-chat-content h3 {
+            font-size: 1.25rem !important;
+        }
+        
+        .no-chat-content p {
+            font-size: 0.875rem !important;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="flex-1 overflow-hidden flex">
+<div class="flex-1 overflow-hidden flex relative">
+    <!-- Mobile Toggle Button -->
+    <button id="mobileSidebarToggle" class="mobile-sidebar-toggle">
+        <i class="fas fa-comments"></i>
+    </button>
+    
     <!-- Conversations Sidebar -->
-    <div class="w-1/3 bg-white border-r border-gray-200 flex flex-col">
+    <div id="conversationsSidebar" class="w-full md:w-1/3 lg:w-1/4 xl:w-1/3 bg-white border-r border-gray-200 flex flex-col">
+        <!-- Close Button for Mobile -->
+        <button id="closeSidebar" class="absolute top-4 right-4 z-10 md:hidden bg-dark-teal text-white p-2 rounded-full">
+            <i class="fas fa-times"></i>
+        </button>
+        
         <!-- Search and Filters -->
         <div class="p-4 border-b border-gray-200">
             <div class="relative mb-3">
-                <input type="text" id="searchUsers" placeholder="Search team members..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-dark-teal">
-                <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                <input type="text" id="searchUsers" placeholder="Search team members..." 
+                       class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-dark-teal">
+                <i class="fas fa-search absolute left-3 top-2.5 text-gray-400"></i>
             </div>
-            <div class="flex space-x-2">
+            <div class="flex space-x-2 filter-buttons">
                 <button id="filterAll" class="filter-active px-3 py-1 rounded-full text-sm transition">All</button>
                 <button id="filterUnread" class="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200 transition">Unread</button>
                 <button id="filterOnline" class="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200 transition">Online</button>
@@ -119,21 +256,27 @@
                      data-unread="{{ conv.unread_count }}">
                     <div class="flex items-start">
                         <div class="relative">
-                            <div class="w-12 h-12 rounded-full {{ conv.color }} flex items-center justify-center text-white font-bold">
+                            <div class="w-12 h-12 rounded-full {{ conv.color }} flex items-center justify-center text-white font-bold avatar-large">
                                 {{ conv.initials }}
                             </div>
                             {% if conv.is_online %}
                             <div class="online-indicator"></div>
                             {% endif %}
                         </div>
-                        <div class="ml-3 flex-1">
+                        <div class="ml-3 flex-1 min-w-0">
                             <div class="flex justify-between items-start">
-                                <h3 class="font-medium text-ink-black">{{ conv.name }}</h3>
-                                <span class="text-xs text-gray-500">     {% if conv.last_message_time %}         {{ conv.last_message_time|timesince }} ago     {% else %}         Just now     {% endif %} </span>
+                                <h3 class="font-medium text-ink-black truncate text-sm md:text-base">{{ conv.name }}</h3>
+                                <span class="text-xs text-gray-500 whitespace-nowrap">
+                                    {% if conv.last_message_time %}
+                                        {{ conv.last_message_time|timesince }} ago
+                                    {% else %}
+                                        Just now
+                                    {% endif %}
+                                </span>
                             </div>
                             <p class="text-sm text-gray-600 truncate">{{ conv.last_message|truncatechars:40 }}</p>
                             <div class="flex justify-between items-center mt-1">
-                                <span class="text-xs text-gray-500">{{ conv.job_position }}</span>
+                                <span class="text-xs text-gray-500 truncate">{{ conv.job_position }}</span>
                                 {% if conv.unread_count > 0 %}
                                 <div class="unread-badge">{{ conv.unread_count }}</div>
                                 {% endif %}
@@ -163,14 +306,18 @@
                      data-name="{{ member.get_full_name|default:member.username }}">
                     <div class="flex items-center">
                         <div class="relative">
-                            <div class="w-10 h-10 rounded-full {% cycle 'bg-dark-teal' 'bg-dark-cyan' 'bg-golden-orange' 'bg-rusty-spice' %} flex items-center justify-center text-white text-sm font-bold">
+                            <div class="w-10 h-10 rounded-full {% cycle 'bg-dark-teal' 'bg-dark-cyan' 'bg-golden-orange' 'bg-rusty-spice' %} flex items-center justify-center text-white text-sm font-bold avatar-small">
                                 {{ member.get_full_name|default:member.username|slice:"0:2"|upper }}
                             </div>
                         </div>
-                        <div class="ml-3 flex-1">
-                            <h4 class="text-sm font-medium text-ink-black">{{ member.get_full_name|default:member.username }}</h4>
-                            <p class="text-xs text-gray-500">
-                                {% if member.employee_profile.job_position %}{{ member.employee_profile.job_position }}{% else %}Team Member{% endif %}
+                        <div class="ml-3 flex-1 min-w-0">
+                            <h4 class="text-sm font-medium text-ink-black truncate">{{ member.get_full_name|default:member.username }}</h4>
+                            <p class="text-xs text-gray-500 truncate">
+                                {% if member.employee_profile.job_position %}
+                                    {{ member.employee_profile.job_position }}
+                                {% else %}
+                                    Team Member
+                                {% endif %}
                             </p>
                         </div>
                     </div>
@@ -185,19 +332,23 @@
     </div>
     
     <!-- Chat Area - Initially hidden -->
-    <div id="chatArea" class="flex-1 flex flex-col">
+    <div id="chatArea" class="flex-1 flex flex-col w-full">
         <!-- Chat Header -->
-        <div class="bg-white border-b border-gray-200 p-4 flex justify-between items-center">
+        <div class="bg-white border-b border-gray-200 p-4 flex justify-between items-center chat-header">
             <div class="flex items-center">
+                <!-- Back Button for Mobile -->
+                <button id="backToConversations" class="mobile-back-button mr-2 text-dark-teal">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
                 <div class="relative">
                     <div id="chatAvatar" class="w-10 h-10 rounded-full bg-dark-teal flex items-center justify-center text-white font-bold">
                         <!-- Initials will be set by JavaScript -->
                     </div>
                     <div id="chatOnlineStatus" class="online-indicator" style="display: none;"></div>
                 </div>
-                <div class="ml-3">
-                    <h3 id="chatUserName" class="font-medium text-ink-black"></h3>
-                    <p id="chatUserRole" class="text-xs text-gray-500"></p>
+                <div class="ml-3 min-w-0">
+                    <h3 id="chatUserName" class="font-medium text-ink-black truncate"></h3>
+                    <p id="chatUserRole" class="text-xs text-gray-500 truncate"></p>
                 </div>
             </div>
             <div class="flex space-x-2">
@@ -219,7 +370,7 @@
         </div>
         
         <!-- Message Input -->
-        <div class="bg-white border-t border-gray-200 p-4">
+        <div class="bg-white border-t border-gray-200 p-4 message-input-container">
             <div class="flex items-center">
                 <button id="attachFileBtn" class="p-2 text-gray-500 hover:text-dark-teal rounded-full hover:bg-gray-100 mr-1">
                     <i class="fas fa-paperclip"></i>
@@ -229,7 +380,8 @@
                 </button>
                 
                 <div class="flex-1 relative">
-                    <input type="text" id="messageInput" placeholder="Type a message..." class="w-full pl-4 pr-10 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-dark-teal" disabled>
+                    <input type="text" id="messageInput" placeholder="Type a message..." 
+                           class="w-full pl-4 pr-10 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-dark-teal message-input" disabled>
                     <button id="sendMessageBtn" class="absolute right-3 top-3 text-gray-500 hover:text-dark-teal" disabled>
                         <i class="far fa-paper-plane"></i>
                     </button>
@@ -242,15 +394,15 @@
     </div>
     
     <!-- No Chat Selected View -->
-    <div id="noChatSelected" class="flex-1 flex items-center justify-center bg-gray-50">
-        <div class="text-center max-w-md">
+    <div id="noChatSelected" class="flex-1 flex items-center justify-center bg-gray-50 w-full">
+        <div class="text-center max-w-md no-chat-content">
             <div class="w-24 h-24 bg-dark-teal bg-opacity-10 rounded-full flex items-center justify-center mx-auto mb-6">
                 <i class="fas fa-comments text-dark-teal text-3xl"></i>
             </div>
             <h3 class="text-xl font-bold text-ink-black mb-3">ProjectFlow Messages</h3>
             <p class="text-gray-600 mb-6">Select a conversation from the sidebar to start messaging with your team members, or start a new conversation.</p>
             <div class="flex justify-center space-x-3">
-                <button id="startNewFromList" class="px-4 py-2 bg-dark-teal text-white rounded-lg hover:bg-dark-cyan">
+                <button id="startNewFromList" class="px-4 py-2 bg-dark-teal text-white rounded-lg hover:bg-dark-cyan text-sm md:text-base">
                     <i class="fas fa-plus mr-2"></i>New Conversation
                 </button>
             </div>
@@ -260,7 +412,7 @@
 
 <!-- Chat Info Modal -->
 <div id="chatInfoModal" class="modal">
-    <div class="modal-content max-w-md">
+    <div class="modal-content max-w-md w-full mx-auto">
         <div class="p-6 border-b border-gray-200">
             <h3 class="text-xl font-bold text-ink-black">User Information</h3>
         </div>
@@ -269,12 +421,12 @@
                 <div class="flex items-center mb-4">
                     <div id="infoAvatar" class="w-16 h-16 rounded-full bg-dark-teal flex items-center justify-center text-white text-xl font-bold mr-4">
                     </div>
-                    <div>
-                        <h4 id="infoName" class="font-bold text-lg"></h4>
-                        <p id="infoJobPosition" class="text-gray-600"></p>
+                    <div class="min-w-0">
+                        <h4 id="infoName" class="font-bold text-lg truncate"></h4>
+                        <p id="infoJobPosition" class="text-gray-600 truncate"></p>
                         <div class="flex items-center mt-1">
-                            <span id="infoStatus" class="text-xs px-2 py-1 rounded-full bg-gray-100"></span>
-                            <span id="infoLastSeen" class="text-xs text-gray-500 ml-2"></span>
+                            <span id="infoStatus" class="text-xs px-2 py-1 rounded-full bg-gray-100 whitespace-nowrap"></span>
+                            <span id="infoLastSeen" class="text-xs text-gray-500 ml-2 truncate"></span>
                         </div>
                     </div>
                 </div>
@@ -282,21 +434,23 @@
                 <div class="space-y-3">
                     <div>
                         <label class="text-sm text-gray-500">Email</label>
-                        <p id="infoEmail" class="font-medium"></p>
+                        <p id="infoEmail" class="font-medium truncate"></p>
                     </div>
                     <div>
                         <label class="text-sm text-gray-500">Department</label>
-                        <p id="infoDepartment" class="font-medium"></p>
+                        <p id="infoDepartment" class="font-medium truncate"></p>
                     </div>
                     <div>
                         <label class="text-sm text-gray-500">Projects</label>
-                        <p id="infoProjects" class="font-medium"></p>
+                        <p id="infoProjects" class="font-medium truncate"></p>
                     </div>
                 </div>
             </div>
             
             <div class="flex justify-end pt-4 mt-6 border-t border-gray-200">
-                <button type="button" id="closeChatInfoBtn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Close</button>
+                <button type="button" id="closeChatInfoBtn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 text-sm md:text-base">
+                    Close
+                </button>
             </div>
         </div>
     </div>
@@ -313,13 +467,85 @@
     let reconnectTimeout = null;
     let reconnectAttempts = 0;
     let lastMessageId = null;
+    let isMobile = window.innerWidth < 768;
+    
+    // Detect screen size changes
+    window.addEventListener('resize', function() {
+        isMobile = window.innerWidth < 768;
+    });
     
     // Initialize when page loads
     document.addEventListener('DOMContentLoaded', function() {
         initializeWebSocket();
         setupEventListeners();
         updateUnreadCount();
+        
+        // Mobile sidebar setup
+        setupMobileNavigation();
+        
+        // Request notification permission
+        if ("Notification" in window) {
+            Notification.requestPermission();
+        }
     });
+    
+    function setupMobileNavigation() {
+        const sidebar = document.getElementById('conversationsSidebar');
+        const toggleBtn = document.getElementById('mobileSidebarToggle');
+        const closeBtn = document.getElementById('closeSidebar');
+        const backBtn = document.getElementById('backToConversations');
+        const chatArea = document.getElementById('chatArea');
+        const noChatView = document.getElementById('noChatSelected');
+        
+        if (!isMobile) {
+            return;
+        }
+        
+        // Initially show sidebar on mobile if no chat is selected
+        if (!document.querySelector('.conversation-active')) {
+            sidebar.classList.add('active');
+            chatArea.classList.remove('active');
+            noChatView.style.display = 'none';
+            toggleBtn.style.display = 'none';
+        } else {
+            sidebar.classList.remove('active');
+            chatArea.classList.add('active');
+            noChatView.style.display = 'none';
+            toggleBtn.style.display = 'block';
+        }
+        
+        // Toggle sidebar
+        toggleBtn.addEventListener('click', function() {
+            sidebar.classList.add('active');
+            chatArea.classList.remove('active');
+            noChatView.style.display = 'none';
+            toggleBtn.style.display = 'none';
+        });
+        
+        // Close sidebar
+        closeBtn.addEventListener('click', function() {
+            sidebar.classList.remove('active');
+            toggleBtn.style.display = 'block';
+        });
+        
+        // Back to conversations from chat
+        backBtn.addEventListener('click', function() {
+            chatArea.classList.remove('active');
+            sidebar.classList.add('active');
+            noChatView.style.display = 'none';
+            toggleBtn.style.display = 'none';
+        });
+        
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            if (isMobile && sidebar.classList.contains('active') && 
+                !sidebar.contains(event.target) && 
+                event.target !== toggleBtn) {
+                sidebar.classList.remove('active');
+                toggleBtn.style.display = 'block';
+            }
+        });
+    }
     
     function initializeWebSocket() {
         const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
@@ -403,6 +629,17 @@
                 const userId = item.getAttribute('data-user-id');
                 const conversationId = item.getAttribute('data-conversation-id');
                 selectConversation(userId, conversationId, item);
+                
+                // On mobile, switch to chat view
+                if (isMobile) {
+                    const sidebar = document.getElementById('conversationsSidebar');
+                    const toggleBtn = document.getElementById('mobileSidebarToggle');
+                    const noChatView = document.getElementById('noChatSelected');
+                    sidebar.classList.remove('active');
+                    document.getElementById('chatArea').classList.add('active');
+                    noChatView.style.display = 'none';
+                    toggleBtn.style.display = 'block';
+                }
             }
         });
         
@@ -414,6 +651,17 @@
                 const userId = item.getAttribute('data-user-id');
                 const userName = item.getAttribute('data-name');
                 startNewConversation(userId, userName);
+                
+                // On mobile, switch to chat view
+                if (isMobile) {
+                    const sidebar = document.getElementById('conversationsSidebar');
+                    const toggleBtn = document.getElementById('mobileSidebarToggle');
+                    const noChatView = document.getElementById('noChatSelected');
+                    sidebar.classList.remove('active');
+                    document.getElementById('chatArea').classList.add('active');
+                    noChatView.style.display = 'none';
+                    toggleBtn.style.display = 'block';
+                }
             }
         });
         
@@ -463,10 +711,24 @@
             document.getElementById('chatInfoModal').classList.remove('active');
         });
         
+        // Close modal when clicking outside
+        document.getElementById('chatInfoModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.remove('active');
+            }
+        });
+        
         // Search users
         document.getElementById('searchUsers').addEventListener('input', debounce(function() {
             searchUsers(this.value);
         }, 300));
+        
+        // Close modal on escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                document.getElementById('chatInfoModal').classList.remove('active');
+            }
+        });
     }
     
     function selectConversation(userId, conversationId, element) {
@@ -624,14 +886,14 @@
                 html += `
                     <div class="flex mb-4 ${isSent ? 'justify-end' : ''}">
                         ${!isSent ? `
-                            <div class="w-8 h-8 rounded-full ${msg.avatar_color || 'bg-dark-teal'} flex items-center justify-center text-white text-xs font-bold mr-2">
+                            <div class="w-8 h-8 rounded-full ${msg.avatar_color || 'bg-dark-teal'} flex items-center justify-center text-white text-xs font-bold mr-2 ${isMobile ? 'hidden sm:flex' : ''}">
                                 ${msg.initials || '??'}
                             </div>
                         ` : ''}
                         
-                        <div class="max-w-xs md:max-w-md">
+                        <div class="max-w-xs md:max-w-md lg:max-w-lg">
                             <div class="${isSent ? 'message-sent' : 'message-received'} p-3">
-                                <p>${escapeHtml(msg.content)}</p>
+                                <p class="break-words">${escapeHtml(msg.content)}</p>
                             </div>
                             <div class="flex ${isSent ? 'justify-end' : ''} mt-1">
                                 <span class="text-xs text-gray-500 ${isSent ? 'mr-2' : ''}">
@@ -642,7 +904,7 @@
                         </div>
                         
                         ${isSent ? `
-                            <div class="w-8 h-8 rounded-full bg-golden-orange flex items-center justify-center text-white text-xs font-bold ml-2">
+                            <div class="w-8 h-8 rounded-full bg-golden-orange flex items-center justify-center text-white text-xs font-bold ml-2 ${isMobile ? 'hidden sm:flex' : ''}">
                                 {{ user.get_full_name|default:user.username|slice:"0:2"|upper }}
                             </div>
                         ` : ''}
@@ -727,8 +989,6 @@
         
         // Stop typing indicator
         sendTypingIndicator(false);
-        
-        // Message persistence handled by server via WebSocket; do not double-send via API when WS is connected
     }
     
     function sendMessageViaAPI(content) {
@@ -807,61 +1067,16 @@
             container.innerHTML = '';
         }
         
-        // Check if we need a date separator
-        const lastMessage = container.lastElementChild;
-        const messageDate = new Date(messageData.timestamp).toDateString();
-        let needsDateSeparator = true;
-        
-        if (lastMessage && lastMessage.classList.contains('message-date-separator')) {
-            const lastSeparator = lastMessage.querySelector('span').textContent;
-            const today = new Date();
-            const yesterday = new Date(today);
-            yesterday.setDate(yesterday.getDate() - 1);
-            
-            let expectedSeparator;
-            if (messageDate === today.toDateString()) {
-                expectedSeparator = 'Today';
-            } else if (messageDate === yesterday.toDateString()) {
-                expectedSeparator = 'Yesterday';
-            } else {
-                expectedSeparator = new Date(messageDate).toLocaleDateString('en-US', { 
-                    month: 'short', 
-                    day: 'numeric', 
-                    year: 'numeric' 
-                });
-            }
-            
-            if (lastSeparator === expectedSeparator) {
-                needsDateSeparator = false;
-            }
+        // Check if we need a date separator for today
+        const today = new Date().toDateString();
+        const lastDateSeparator = container.querySelector('.message-date-separator:last-child');
+        if (!lastDateSeparator || !lastDateSeparator.textContent.includes('Today')) {
+            const dateSeparator = document.createElement('div');
+            dateSeparator.className = 'message-date-separator';
+            dateSeparator.innerHTML = `<span>Today</span>`;
+            container.appendChild(dateSeparator);
         }
         
-        // Add date separator if needed
-        if (needsDateSeparator) {
-            const today = new Date();
-            const yesterday = new Date(today);
-            yesterday.setDate(yesterday.getDate() - 1);
-            
-            let dateLabel;
-            if (messageDate === today.toDateString()) {
-                dateLabel = 'Today';
-            } else if (messageDate === yesterday.toDateString()) {
-                dateLabel = 'Yesterday';
-            } else {
-                dateLabel = new Date(messageDate).toLocaleDateString('en-US', { 
-                    month: 'short', 
-                    day: 'numeric', 
-                    year: 'numeric' 
-                });
-            }
-            
-            const separator = document.createElement('div');
-            separator.className = 'message-date-separator';
-            separator.innerHTML = `<span>${dateLabel}</span>`;
-            container.appendChild(separator);
-        }
-        
-        // Create message element
         const messageTime = new Date(messageData.timestamp).toLocaleTimeString('en-US', { 
             hour: '2-digit', 
             minute: '2-digit' 
@@ -872,14 +1087,14 @@
         
         messageDiv.innerHTML = `
             ${!messageData.is_sent ? `
-                <div class="w-8 h-8 rounded-full ${messageData.avatar_color || 'bg-dark-teal'} flex items-center justify-center text-white text-xs font-bold mr-2">
+                <div class="w-8 h-8 rounded-full ${messageData.avatar_color || 'bg-dark-teal'} flex items-center justify-center text-white text-xs font-bold mr-2 ${isMobile ? 'hidden sm:flex' : ''}">
                     ${messageData.initials}
                 </div>
             ` : ''}
             
-            <div class="max-w-xs md:max-w-md">
+            <div class="max-w-xs md:max-w-md lg:max-w-lg">
                 <div class="${messageData.is_sent ? 'message-sent' : 'message-received'} p-3">
-                    <p>${escapeHtml(messageData.content)}</p>
+                    <p class="break-words">${escapeHtml(messageData.content)}</p>
                 </div>
                 <div class="flex ${messageData.is_sent ? 'justify-end' : ''} mt-1">
                     <span class="text-xs text-gray-500 ${messageData.is_sent ? 'mr-2' : ''}">
@@ -890,7 +1105,7 @@
             </div>
             
             ${messageData.is_sent ? `
-                <div class="w-8 h-8 rounded-full bg-golden-orange flex items-center justify-center text-white text-xs font-bold ml-2">
+                <div class="w-8 h-8 rounded-full bg-golden-orange flex items-center justify-center text-white text-xs font-bold ml-2 ${isMobile ? 'hidden sm:flex' : ''}">
                     {{ user.get_full_name|default:user.username|slice:"0:2"|upper }}
                 </div>
             ` : ''}
@@ -962,26 +1177,28 @@
         items.forEach(item => {
             switch(filter) {
                 case 'all':
-                    item.style.display = 'block';
+                    item.style.display = 'flex';
                     break;
                     
                 case 'unread':
                     const unread = parseInt(item.getAttribute('data-unread') || 0);
-                    item.style.display = unread > 0 ? 'block' : 'none';
+                    item.style.display = unread > 0 ? 'flex' : 'none';
                     break;
                     
                 case 'online':
                     const onlineIndicator = item.querySelector('.online-indicator');
                     const isOnline = onlineIndicator && window.getComputedStyle(onlineIndicator).display !== 'none';
-                    item.style.display = isOnline ? 'block' : 'none';
+                    item.style.display = isOnline ? 'flex' : 'none';
                     break;
             }
         });
         
         // Update active filter button
-        document.querySelectorAll('#chatSidebar button').forEach(btn => {
+        document.querySelectorAll('.filter-buttons button').forEach(btn => {
             btn.classList.remove('filter-active');
+            btn.classList.add('bg-gray-100', 'text-gray-700');
         });
+        document.getElementById(`filter${filter.charAt(0).toUpperCase() + filter.slice(1)}`).classList.remove('bg-gray-100', 'text-gray-700');
         document.getElementById(`filter${filter.charAt(0).toUpperCase() + filter.slice(1)}`).classList.add('filter-active');
     }
     
@@ -1027,11 +1244,11 @@
                                 ${user.name.substring(0, 2).toUpperCase()}
                             </div>
                         </div>
-                        <div class="ml-3 flex-1">
-                            <h4 class="text-sm font-medium text-ink-black">${user.name}</h4>
-                            <p class="text-xs text-gray-500">${user.job_position || 'Team Member'}</p>
+                        <div class="ml-3 flex-1 min-w-0">
+                            <h4 class="text-sm font-medium text-ink-black truncate">${user.name}</h4>
+                            <p class="text-xs text-gray-500 truncate">${user.job_position || 'Team Member'}</p>
                         </div>
-                        <button class="px-3 py-1 bg-dark-teal text-white text-xs rounded hover:bg-dark-cyan start-chat-btn">
+                        <button class="px-3 py-1 bg-dark-teal text-white text-xs rounded hover:bg-dark-cyan start-chat-btn whitespace-nowrap">
                             Message
                         </button>
                     </div>
@@ -1066,7 +1283,7 @@
         }
         
         const initials = userName.substring(0, 2).toUpperCase();
-        const colorClass = 'bg-dark-teal'; // You can make this dynamic
+        const colorClass = 'bg-dark-teal';
         
         const conversationHtml = `
             <div class="p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition conversation-item" 
@@ -1075,18 +1292,18 @@
                  data-unread="0">
                 <div class="flex items-start">
                     <div class="relative">
-                        <div class="w-12 h-12 rounded-full ${colorClass} flex items-center justify-center text-white font-bold">
+                        <div class="w-12 h-12 rounded-full ${colorClass} flex items-center justify-center text-white font-bold avatar-large">
                             ${initials}
                         </div>
                     </div>
-                    <div class="ml-3 flex-1">
+                    <div class="ml-3 flex-1 min-w-0">
                         <div class="flex justify-between items-start">
-                            <h3 class="font-medium text-ink-black">${userName}</h3>
-                            <span class="text-xs text-gray-500">Just now</span>
+                            <h3 class="font-medium text-ink-black truncate text-sm md:text-base">${userName}</h3>
+                            <span class="text-xs text-gray-500 whitespace-nowrap">Just now</span>
                         </div>
                         <p class="text-sm text-gray-600 truncate">Start a conversation...</p>
                         <div class="flex justify-between items-center mt-1">
-                            <span class="text-xs text-gray-500">Team Member</span>
+                            <span class="text-xs text-gray-500 truncate">Team Member</span>
                         </div>
                     </div>
                 </div>
@@ -1113,9 +1330,10 @@
             // Update last message
             const lastMessageElement = conversationItem.querySelector('.text-gray-600');
             if (lastMessageElement) {
-                lastMessageElement.textContent = messageData.content.length > 40 ? 
+                const truncatedMessage = messageData.content.length > 40 ? 
                     messageData.content.substring(0, 40) + '...' : 
                     messageData.content;
+                lastMessageElement.textContent = truncatedMessage;
             }
             
             // Update time
@@ -1135,7 +1353,10 @@
                 const badge = document.createElement('div');
                 badge.className = 'unread-badge';
                 badge.textContent = '1';
-                conversationItem.querySelector('.flex.justify-between').appendChild(badge);
+                const badgeContainer = conversationItem.querySelector('.flex.justify-between');
+                if (badgeContainer) {
+                    badgeContainer.appendChild(badge);
+                }
             }
             
             // Move to top
@@ -1160,13 +1381,16 @@
                             badgeElement.textContent = unreadCount;
                         } else {
                             // Create badge if it doesn't exist
-                            const envelopeIcon = document.querySelector('header .fa-envelope').closest('a, button');
+                            const envelopeIcon = document.querySelector('header .fa-envelope');
                             if (envelopeIcon) {
-                                const badge = document.createElement('span');
-                                badge.className = 'absolute -top-1 -right-1 bg-golden-orange text-white text-xs w-5 h-5 flex items-center justify-center rounded-full';
-                                badge.textContent = unreadCount;
-                                envelopeIcon.parentElement.classList.add('relative');
-                                envelopeIcon.parentElement.appendChild(badge);
+                                const parent = envelopeIcon.closest('a, button');
+                                if (parent) {
+                                    const badge = document.createElement('span');
+                                    badge.className = 'absolute -top-1 -right-1 bg-golden-orange text-white text-xs w-5 h-5 flex items-center justify-center rounded-full';
+                                    badge.textContent = unreadCount;
+                                    parent.parentElement.classList.add('relative');
+                                    parent.parentElement.appendChild(badge);
+                                }
                             }
                         }
                     } else if (badgeElement) {
@@ -1261,7 +1485,8 @@
             <div class="text-center py-8 text-gray-500">
                 <i class="fas fa-exclamation-triangle text-2xl mb-2"></i>
                 <p>${message}</p>
-                <button onclick="loadConversationMessages(${currentConversationUserId})" class="mt-2 px-4 py-2 bg-dark-teal text-white rounded hover:bg-dark-cyan">
+                <button onclick="loadConversationMessages(${currentConversationUserId})" 
+                        class="mt-2 px-4 py-2 bg-dark-teal text-white rounded hover:bg-dark-cyan text-sm">
                     Try Again
                 </button>
             </div>
@@ -1296,5 +1521,3 @@
     }
 </script>
 {% endblock %}
-    
-    
