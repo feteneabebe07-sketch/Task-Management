@@ -63,28 +63,70 @@
         border: 1px solid #e2e8f0;
     }
 
-    /* Mobile sidebar toggle */
+    /* Modal styles */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .modal.active {
+        display: flex;
+    }
+    
+    .modal-content {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        max-width: 90%;
+        width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    /* Initial states */
     .mobile-conversations-toggle {
         display: none;
     }
 
+    #conversationsSidebar {
+        display: flex !important;
+    }
+    
     @media (max-width: 768px) {
         .mobile-conversations-toggle {
             display: flex;
+            position: fixed;
             bottom: 4rem;
+            left: 1rem;
+            z-index: 100;
+            background-color: #005f73;
+            color: white;
+            padding: 0.75rem;
+            border-radius: 50%;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            width: 56px;
+            height: 56px;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            cursor: pointer;
         }
-        @media (min-width: 768px) {
-    #mobileConversationsToggle {
-        display: none !important;
-    }
-}
+        
         .conversations-sidebar {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 40;
+            z-index: 50;
             transform: translateX(-100%);
             transition: transform 0.3s ease-in-out;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
@@ -94,12 +136,20 @@
             transform: translateX(0);
         }
         
-        .chat-area.active {
-            display: flex;
+        #chatArea {
+            width: 100%;
+            display: none !important;
         }
         
-        .chat-area {
+        #chatArea.active {
+            display: flex !important;
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
+            height: 100%;
+            z-index: 40;
+            background-color: white;
         }
         
         .message-sent, .message-received {
@@ -134,11 +184,59 @@
             padding: 0.375rem 0.75rem !important;
             font-size: 0.75rem !important;
         }
+        
+        #closeConversationsSidebar {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            z-index: 10;
+            background-color: #005f73;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        
+        #backToConversations {
+            display: flex;
+            align-items: center;
+            background: none;
+            border: none;
+            color: #005f73;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 8px;
+            margin-right: 8px;
+        }
+    }
+    
+    @media (min-width: 769px) {
+        #mobileConversationsToggle,
+        #closeConversationsSidebar,
+        #backToConversations {
+            display: none !important;
+        }
+        
+        #conversationsSidebar {
+            display: flex !important;
+            transform: none !important;
+            position: relative !important;
+        }
+        
+        #chatArea {
+            display: flex !important;
+        }
     }
 
     @media (max-width: 640px) {
         .message-input-container {
             padding: 0.75rem !important;
+            padding-bottom: 4rem !important;
         }
         
         .message-input {
@@ -158,7 +256,6 @@
             width: 2.5rem !important;
             height: 2.5rem !important;
             font-size: 0.875rem !important;
-            margin-right: 0.5rem !important;
         }
         
         .avatar-small {
@@ -173,16 +270,16 @@
 {% block content %}
 <div class="flex-1 flex overflow-hidden bg-gray-50 relative">
     <!-- Mobile Toggle Button -->
-<button id="mobileConversationsToggle" class="mobile-conversations-toggle fixed bottom-4 left-4 z-30 md:hidden bg-dark-teal text-white p-2 rounded-full shadow-lg">
-    <i class="fas fa-comments"></i>
-</button>
+    <button id="mobileConversationsToggle" class="mobile-conversations-toggle">
+        <i class="fas fa-comments text-lg"></i>
+    </button>
     
     <!-- Conversations Sidebar -->
     <div id="conversationsSidebar" class="conversations-sidebar w-full md:w-1/3 lg:w-1/4 xl:w-1/3 border-r border-gray-200 bg-white flex flex-col">
         <!-- Close Button for Mobile -->
-        <button id="closeConversationsSidebar" class="absolute top-4 right-4 z-10 md:hidden bg-dark-teal text-white p-2 rounded-full">
-    <i class="fas fa-times"></i>
-</button>
+        <button id="closeConversationsSidebar" class="absolute top-4 right-4 z-10 md:hidden">
+            <i class="fas fa-times"></i>
+        </button>
         
         <!-- Conversations Header -->
         <div class="p-4 border-b border-gray-200">
@@ -209,8 +306,7 @@
         <div id="conversationsList" class="flex-1 overflow-y-auto">
             {% if conversations %}
                 {% for conv in conversations %}
-                <div class="p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer conversation-item 
-                           {% if conv.active %}conversation-active{% endif %}" 
+                <div class="p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer conversation-item" 
                      data-conversation-id="{{ conv.id }}"
                      data-user-id="{{ conv.other_user.id }}"
                      data-unread="{{ conv.unread_count }}">
@@ -239,7 +335,7 @@
                                 {% else %}
                                 <span></span>
                                 {% endif %}
-                                {% if conv.unread %}
+                                {% if conv.unread_count > 0 %}
                                 <div class="unread-indicator"></div>
                                 {% endif %}
                             </div>
@@ -320,18 +416,20 @@
         <div class="p-4 border-b border-gray-200 bg-white flex items-center justify-between chat-header">
             <div class="flex items-center">
                 <!-- Back Button for Mobile -->
-                <button id="backToConversations" class="mr-2 md:hidden text-dark-teal">
-                    <i class="fas fa-arrow-left"></i>
+                <button id="backToConversations" class="mobile-back-button mr-2 md:hidden">
+                    <i class="fas fa-arrow-left mr-2"></i>
                 </button>
-                <div class="relative">
-                    <div id="chatAvatar" class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold text-lg mr-3">
-                        <i class="fas fa-user"></i>
+                <div class="flex items-center">
+                    <div class="relative">
+                        <div id="chatAvatar" class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold text-lg mr-3">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div id="chatOnlineStatus" class="online-indicator" style="display: none;"></div>
                     </div>
-                    <div id="chatOnlineStatus" class="online-indicator" style="display: none;"></div>
-                </div>
-                <div class="min-w-0">
-                    <h3 id="chatPerson" class="font-semibold text-ink-black truncate">Select a conversation</h3>
-                    <p id="chatRole" class="text-sm text-gray-600 truncate"></p>
+                    <div class="min-w-0">
+                        <h3 id="chatPerson" class="font-semibold text-ink-black truncate">Select a conversation</h3>
+                        <p id="chatRole" class="text-sm text-gray-600 truncate"></p>
+                    </div>
                 </div>
             </div>
             <div class="flex items-center space-x-2">
@@ -375,13 +473,11 @@
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block modal %}
 <!-- New Message Modal -->
-<div id="newMessageModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 p-4">
-    <div class="bg-white rounded-xl shadow-lg w-full max-w-md mx-auto modal-content">
-        <div class="flex justify-between items-center mb-6 p-6">
+<div id="newMessageModal" class="modal">
+    <div class="modal-content max-w-md w-full mx-auto">
+        <div class="flex justify-between items-center mb-6 p-6 border-b border-gray-200">
             <h3 class="text-xl font-semibold text-ink-black">New Message</h3>
             <button class="text-gray-500 hover:text-gray-700 close-modal">
                 <i class="fas fa-times text-xl"></i>
@@ -431,7 +527,7 @@
                 </div>
             </div>
             
-            <div class="mt-6 flex justify-end space-x-3">
+            <div class="mt-6 flex justify-end space-x-3 border-t border-gray-200 pt-4">
                 <button type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 close-modal text-sm md:text-base">
                     Cancel
                 </button>
@@ -459,77 +555,127 @@
     // Detect screen size changes
     window.addEventListener('resize', function() {
         isMobile = window.innerWidth < 768;
+        if (isMobile) {
+            setupMobileNavigation();
+        }
     });
     
     // Initialize when page loads
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('Initializing messages page...');
+        
+        // Set initial states
+        setupInitialDisplay();
+        
+        // Setup mobile navigation
+        setupMobileNavigation();
+        
+        // Initialize WebSocket and other components
         initializeWebSocket();
         setupEventListeners();
         updateUnreadCount();
-        
-        // Mobile sidebar setup
-        setupMobileNavigation();
         
         // Request notification permission
         if ("Notification" in window) {
             Notification.requestPermission();
         }
+        
+        console.log('Messages page initialized');
     });
+    
+    function setupInitialDisplay() {
+        const sidebar = document.getElementById('conversationsSidebar');
+        const chatArea = document.getElementById('chatArea');
+        const toggleBtn = document.getElementById('mobileConversationsToggle');
+        
+        // Check if we're on mobile
+        isMobile = window.innerWidth < 768;
+        
+        if (isMobile) {
+            // Mobile: Show sidebar, hide chat area
+            if (sidebar) sidebar.classList.add('active');
+            if (chatArea) chatArea.classList.remove('active');
+            if (toggleBtn) toggleBtn.style.display = 'flex';
+            
+            // Hide mobile toggle button if sidebar is active
+            if (toggleBtn && sidebar.classList.contains('active')) {
+                toggleBtn.style.display = 'none';
+            }
+        } else {
+            // Desktop: Show both sidebar and chat area
+            if (sidebar) sidebar.classList.add('active');
+            if (chatArea) chatArea.classList.add('active');
+            if (toggleBtn) toggleBtn.style.display = 'none';
+        }
+    }
     
     function setupMobileNavigation() {
-    const sidebar = document.getElementById('conversationsSidebar');
-    const toggleBtn = document.getElementById('mobileConversationsToggle');
-    const closeBtn = document.getElementById('closeConversationsSidebar');  // Changed ID
-    const backBtn = document.getElementById('backToConversations');
-    
-    // Mobile toggle button should be visible on mobile
-    if (toggleBtn) {
-        toggleBtn.style.display = isMobile ? 'block' : 'none';
-    }
-    
-    if (!isMobile) {
-        sidebar.classList.remove('conversations-sidebar');
-        sidebar.classList.add('block');
-        return;
-    }
-    
-    // Toggle sidebar
-    if (toggleBtn) {
-        toggleBtn.addEventListener('click', function() {
-            sidebar.classList.add('active');
-            document.getElementById('chatArea').classList.remove('active');
-            toggleBtn.style.display = 'none';
-        });
-    }
-    
-    // Close sidebar
-    if (closeBtn) {
-        closeBtn.addEventListener('click', function() {
-            sidebar.classList.remove('active');
-            if (toggleBtn) toggleBtn.style.display = 'block';
-        });
-    }
-    
-    // Back to conversations from chat
-    if (backBtn) {
-        backBtn.addEventListener('click', function() {
-            sidebar.classList.add('active');
-            document.getElementById('chatArea').classList.remove('active');
+        const sidebar = document.getElementById('conversationsSidebar');
+        const chatArea = document.getElementById('chatArea');
+        const toggleBtn = document.getElementById('mobileConversationsToggle');
+        const closeBtn = document.getElementById('closeConversationsSidebar');
+        const backBtn = document.getElementById('backToConversations');
+        
+        // If not mobile, hide mobile-specific buttons
+        if (!isMobile) {
             if (toggleBtn) toggleBtn.style.display = 'none';
+            if (closeBtn) closeBtn.style.display = 'none';
+            if (backBtn) backBtn.style.display = 'none';
+            return;
+        }
+        
+        // Ensure buttons are visible on mobile
+        if (toggleBtn) toggleBtn.style.display = 'flex';
+        if (closeBtn) closeBtn.style.display = 'flex';
+        if (backBtn) backBtn.style.display = 'flex';
+        
+        // Toggle sidebar when clicking toggle button
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (sidebar) {
+                    sidebar.classList.add('active');
+                    toggleBtn.style.display = 'none';
+                }
+                if (chatArea) chatArea.classList.remove('active');
+            });
+        }
+        
+        // Close sidebar when clicking close button
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (sidebar) sidebar.classList.remove('active');
+                if (toggleBtn) toggleBtn.style.display = 'flex';
+            });
+        }
+        
+        // Back button to return to conversations
+        if (backBtn) {
+            backBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (sidebar) {
+                    sidebar.classList.add('active');
+                    if (toggleBtn) toggleBtn.style.display = 'none';
+                }
+                if (chatArea) chatArea.classList.remove('active');
+            });
+        }
+        
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            if (!isMobile) return;
+            
+            if (sidebar && sidebar.classList.contains('active') && 
+                !sidebar.contains(event.target) && 
+                !event.target.closest('#mobileConversationsToggle') &&
+                event.target.id !== 'mobileConversationsToggle') {
+                sidebar.classList.remove('active');
+                if (toggleBtn) toggleBtn.style.display = 'flex';
+            }
         });
     }
     
-    // Close sidebar when clicking outside on mobile
-    document.addEventListener('click', function(event) {
-        if (isMobile && sidebar.classList.contains('active') && 
-            !sidebar.contains(event.target) && 
-            event.target !== toggleBtn && 
-            !event.target.closest('#mobileConversationsToggle')) {
-            sidebar.classList.remove('active');
-            if (toggleBtn) toggleBtn.style.display = 'block';
-        }
-    });
-}
     function initializeWebSocket() {
         const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
         const wsUrl = protocol + window.location.host + '/ws/messages/';
@@ -605,24 +751,18 @@
     
     function setupEventListeners() {
         // Conversation list clicks
-        document.getElementById('conversationsList').addEventListener('click', function(e) {
-            const item = e.target.closest('.conversation-item');
-            if (item) {
-                e.preventDefault();
-                const userId = item.getAttribute('data-user-id');
-                const conversationId = item.getAttribute('data-conversation-id');
-                selectConversation(userId, conversationId, item);
-                
-                // On mobile, switch to chat view
-                if (isMobile) {
-                    const sidebar = document.getElementById('conversationsSidebar');
-                    const toggleBtn = document.getElementById('mobileConversationsToggle');
-                    sidebar.classList.remove('active');
-                    document.getElementById('chatArea').classList.add('active');
-                    toggleBtn.style.display = 'block';
+        const conversationsList = document.getElementById('conversationsList');
+        if (conversationsList) {
+            conversationsList.addEventListener('click', function(e) {
+                const item = e.target.closest('.conversation-item');
+                if (item) {
+                    e.preventDefault();
+                    const userId = item.getAttribute('data-user-id');
+                    const conversationId = item.getAttribute('data-conversation-id');
+                    selectConversation(userId, conversationId, item);
                 }
-            }
-        });
+            });
+        }
         
         // Team member clicks (quick start section)
         document.querySelectorAll('.team-member-item .start-chat-btn').forEach(button => {
@@ -632,15 +772,6 @@
                 const userId = item.getAttribute('data-user-id');
                 const userName = item.getAttribute('data-name');
                 startNewConversation(userId, userName);
-                
-                // On mobile, switch to chat view
-                if (isMobile) {
-                    const sidebar = document.getElementById('conversationsSidebar');
-                    const toggleBtn = document.getElementById('mobileConversationsToggle');
-                    sidebar.classList.remove('active');
-                    document.getElementById('chatArea').classList.add('active');
-                    toggleBtn.style.display = 'block';
-                }
             });
         });
         
@@ -651,113 +782,141 @@
                     const userId = this.getAttribute('data-user-id');
                     const userName = this.getAttribute('data-name');
                     startNewConversation(userId, userName);
-                    
-                    // On mobile, switch to chat view
-                    if (isMobile) {
-                        const sidebar = document.getElementById('conversationsSidebar');
-                        const toggleBtn = document.getElementById('mobileConversationsToggle');
-                        sidebar.classList.remove('active');
-                        document.getElementById('chatArea').classList.add('active');
-                        toggleBtn.style.display = 'block';
-                    }
                 }
             });
         });
         
         // New message button
-        document.getElementById('newMessageBtn').addEventListener('click', function() {
-            document.getElementById('newMessageModal').classList.remove('hidden');
-        });
+        const newMessageBtn = document.getElementById('newMessageBtn');
+        if (newMessageBtn) {
+            newMessageBtn.addEventListener('click', function() {
+                const modal = document.getElementById('newMessageModal');
+                if (modal) modal.classList.add('active');
+            });
+        }
         
         // Close modal buttons
         document.querySelectorAll('.close-modal').forEach(button => {
             button.addEventListener('click', function() {
-                document.getElementById('newMessageModal').classList.add('hidden');
+                const modal = document.getElementById('newMessageModal');
+                if (modal) modal.classList.remove('active');
             });
         });
         
         // Close modal when clicking outside
-        document.getElementById('newMessageModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                this.classList.add('hidden');
-            }
-        });
+        const newMessageModal = document.getElementById('newMessageModal');
+        if (newMessageModal) {
+            newMessageModal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.classList.remove('active');
+                }
+            });
+        }
         
         // Send new message form
-        document.getElementById('newMessageForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            sendNewMessage();
-        });
+        const newMessageForm = document.getElementById('newMessageForm');
+        if (newMessageForm) {
+            newMessageForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                sendNewMessage();
+            });
+        }
         
         // Filter buttons
-        document.getElementById('filterAll').addEventListener('click', () => filterConversations('all'));
-        document.getElementById('filterUnread').addEventListener('click', () => filterConversations('unread'));
-        document.getElementById('filterOnline').addEventListener('click', () => filterConversations('online'));
+        const filterAll = document.getElementById('filterAll');
+        const filterUnread = document.getElementById('filterUnread');
+        const filterOnline = document.getElementById('filterOnline');
+        
+        if (filterAll) filterAll.addEventListener('click', () => filterConversations('all'));
+        if (filterUnread) filterUnread.addEventListener('click', () => filterConversations('unread'));
+        if (filterOnline) filterOnline.addEventListener('click', () => filterConversations('online'));
         
         // Search conversations
-        document.getElementById('searchConversations').addEventListener('input', debounce(function() {
-            searchConversations(this.value);
-        }, 300));
+        const searchConversations = document.getElementById('searchConversations');
+        if (searchConversations) {
+            searchConversations.addEventListener('input', debounce(function() {
+                searchConversations(this.value);
+            }, 300));
+        }
         
         // Send message button
-        document.getElementById('sendMessageBtn').addEventListener('click', sendMessage);
+        const sendMessageBtn = document.getElementById('sendMessageBtn');
+        if (sendMessageBtn) {
+            sendMessageBtn.addEventListener('click', sendMessage);
+        }
         
         // Send message on Enter key
-        document.getElementById('messageInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            }
-        });
-        
-        // Typing indicator
-        document.getElementById('messageInput').addEventListener('input', function() {
-            sendTypingIndicator(true);
-            clearTimeout(typingTimeout);
-            typingTimeout = setTimeout(() => {
-                sendTypingIndicator(false);
-            }, 1000);
-        });
-        
-        // Enable/disable message input based on selection
-        document.getElementById('messageInput').addEventListener('focus', function() {
-            if (!currentConversationUserId) {
-                this.blur();
-                showNotification('Info', 'Please select a conversation first', 'info');
-            }
-        });
+        const messageInput = document.getElementById('messageInput');
+        if (messageInput) {
+            messageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+            
+            // Typing indicator
+            messageInput.addEventListener('input', function() {
+                sendTypingIndicator(true);
+                clearTimeout(typingTimeout);
+                typingTimeout = setTimeout(() => {
+                    sendTypingIndicator(false);
+                }, 1000);
+            });
+        }
         
         // Close modal on escape key
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
-                document.getElementById('newMessageModal').classList.add('hidden');
+                const modal = document.getElementById('newMessageModal');
+                if (modal) modal.classList.remove('active');
             }
         });
     }
     
     function selectConversation(userId, conversationId, element) {
+        console.log('Selecting conversation:', userId, conversationId);
+        
         // Update UI
         document.querySelectorAll('.conversation-item').forEach(item => {
             item.classList.remove('conversation-active');
         });
-        element.classList.add('conversation-active');
-           // On mobile, hide the toggle button when in chat view
-    if (isMobile) {
-        const toggleBtn = document.getElementById('mobileConversationsToggle');
-        if (toggleBtn) toggleBtn.style.display = 'none';
-    }
+        
+        if (element) {
+            element.classList.add('conversation-active');
+        }
+        
         // Set current conversation
         currentConversationUserId = userId;
         currentConversationId = conversationId;
         
-        // Show chat area and enable input
-        document.getElementById('messageInputContainer').style.display = 'flex';
-        document.getElementById('videoCallBtn').style.display = 'block';
-        document.getElementById('moreOptionsBtn').style.display = 'block';
+        // Get DOM elements
+        const sidebar = document.getElementById('conversationsSidebar');
+        const chatArea = document.getElementById('chatArea');
+        const toggleBtn = document.getElementById('mobileConversationsToggle');
+        const messageInputContainer = document.getElementById('messageInputContainer');
+        const videoCallBtn = document.getElementById('videoCallBtn');
+        const moreOptionsBtn = document.getElementById('moreOptionsBtn');
+        
+        // Update active states
+        if (isMobile) {
+            // On mobile: Show chat area, hide sidebar
+            if (sidebar) sidebar.classList.remove('active');
+            if (chatArea) chatArea.classList.add('active');
+            if (toggleBtn) toggleBtn.style.display = 'none';
+        }
+        
+        // Show message input and buttons
+        if (messageInputContainer) messageInputContainer.style.display = 'flex';
+        if (videoCallBtn) videoCallBtn.style.display = 'block';
+        if (moreOptionsBtn) moreOptionsBtn.style.display = 'block';
         
         // Enable message input
-        document.getElementById('messageInput').disabled = false;
-        document.getElementById('messageInput').focus();
+        const messageInput = document.getElementById('messageInput');
+        if (messageInput) {
+            messageInput.disabled = false;
+            messageInput.focus();
+        }
         
         // Load conversation messages
         loadConversationMessages(userId);
@@ -766,55 +925,100 @@
         markMessagesAsRead(userId);
         
         // Remove unread indicator
-        const unreadIndicator = element.querySelector('.unread-indicator');
-        if (unreadIndicator) {
-            unreadIndicator.remove();
+        if (element) {
+            const unreadIndicator = element.querySelector('.unread-indicator');
+            if (unreadIndicator) {
+                unreadIndicator.remove();
+            }
         }
         
         // Update chat header
-        updateChatHeader(element);
+        if (element) {
+            updateChatHeader(element);
+        }
     }
     
     function startNewConversation(userId, userName) {
+        console.log('Starting new conversation with:', userId, userName);
+        
         currentConversationUserId = userId;
         currentConversationId = `conv_{{ user.id }}_${userId}`;
         
-        // Show chat area
-        document.getElementById('messageInputContainer').style.display = 'flex';
-        document.getElementById('videoCallBtn').style.display = 'block';
-        document.getElementById('moreOptionsBtn').style.display = 'block';
-        document.getElementById('messageInput').disabled = false;
+        // Get DOM elements
+        const sidebar = document.getElementById('conversationsSidebar');
+        const chatArea = document.getElementById('chatArea');
+        const toggleBtn = document.getElementById('mobileConversationsToggle');
+        const messageInputContainer = document.getElementById('messageInputContainer');
+        const videoCallBtn = document.getElementById('videoCallBtn');
+        const moreOptionsBtn = document.getElementById('moreOptionsBtn');
         
-        // Set up chat header
-        document.getElementById('chatPerson').textContent = userName;
-        document.getElementById('chatAvatar').textContent = getInitials(userName);
-        document.getElementById('chatAvatar').className = 'w-10 h-10 rounded-full bg-dark-teal flex items-center justify-center text-white font-bold text-lg mr-3';
-        document.getElementById('chatRole').textContent = 'Team Member';
+        // Update UI
+        if (isMobile) {
+            // On mobile: Show chat area, hide sidebar
+            if (sidebar) sidebar.classList.remove('active');
+            if (chatArea) chatArea.classList.add('active');
+            if (toggleBtn) toggleBtn.style.display = 'none';
+        }
+        
+        // Show message input and buttons
+        if (messageInputContainer) messageInputContainer.style.display = 'flex';
+        if (videoCallBtn) videoCallBtn.style.display = 'block';
+        if (moreOptionsBtn) moreOptionsBtn.style.display = 'block';
+        
+        // Enable message input
+        const messageInput = document.getElementById('messageInput');
+        if (messageInput) {
+            messageInput.disabled = false;
+            messageInput.focus();
+        }
+        
+        // Set up chat header with basic info
+        const chatPerson = document.getElementById('chatPerson');
+        const chatAvatar = document.getElementById('chatAvatar');
+        const chatRole = document.getElementById('chatRole');
+        
+        if (chatPerson) chatPerson.textContent = userName;
+        if (chatAvatar) {
+            chatAvatar.textContent = getInitials(userName);
+            chatAvatar.className = 'w-10 h-10 rounded-full bg-dark-teal flex items-center justify-center text-white font-bold text-lg mr-3';
+            chatAvatar.innerHTML = '';
+        }
+        if (chatRole) chatRole.textContent = 'Team Member';
         
         // Clear messages container
         const container = document.getElementById('messagesContainer');
-        container.innerHTML = `
-            <div class="text-center py-8 text-gray-500">
-                <i class="fas fa-comment-alt text-3xl mb-4"></i>
-                <p>Start a conversation with ${userName}</p>
-                <p class="text-sm mt-1">Send your first message to begin</p>
-            </div>
-        `;
+        if (container) {
+            container.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <i class="fas fa-comment-alt text-3xl mb-4"></i>
+                    <p>Start a conversation with ${userName}</p>
+                    <p class="text-sm mt-1">Send your first message to begin</p>
+                </div>
+            `;
+        }
         
         // Focus on message input
-        document.getElementById('messageInput').focus();
+        if (messageInput) messageInput.focus();
         
         // Add to conversations list if not already there
         addToConversationsList(userId, userName);
         
         // Close new message modal if open
-        document.getElementById('newMessageModal').classList.add('hidden');
+        const modal = document.getElementById('newMessageModal');
+        if (modal) modal.classList.remove('active');
     }
     
     function sendNewMessage() {
         const form = document.getElementById('newMessageForm');
-        const recipientId = form.querySelector('#recipientSelect').value;
-        const content = form.querySelector('#newMessageText').value.trim();
+        if (!form) return;
+        
+        const recipientSelect = form.querySelector('#recipientSelect');
+        const newMessageText = form.querySelector('#newMessageText');
+        
+        if (!recipientSelect || !newMessageText) return;
+        
+        const recipientId = recipientSelect.value;
+        const content = newMessageText.value.trim();
         
         if (!recipientId || !content) {
             showNotification('Error', 'Please select a recipient and enter a message', 'error');
@@ -848,7 +1052,8 @@
             if (data.success) {
                 // Reset form and close modal
                 form.reset();
-                document.getElementById('newMessageModal').classList.add('hidden');
+                const modal = document.getElementById('newMessageModal');
+                if (modal) modal.classList.remove('active');
                 
                 // If starting a new conversation, load it
                 if (data.new_conversation || recipientId != currentConversationUserId) {
@@ -868,6 +1073,8 @@
     
     function loadConversationMessages(userId) {
         const container = document.getElementById('messagesContainer');
+        if (!container) return;
+        
         container.innerHTML = `
             <div class="text-center py-8 text-gray-500">
                 <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
@@ -894,6 +1101,7 @@
     
     function displayMessages(messages, userInfo) {
         const container = document.getElementById('messagesContainer');
+        if (!container) return;
         
         if (!messages || messages.length === 0) {
             container.innerHTML = `
@@ -997,33 +1205,66 @@
     }
     
     function updateChatHeader(element) {
+        if (!element) return;
+        
         // Extract info from conversation element
-        const name = element.querySelector('.font-medium')?.textContent || '';
-        const initials = element.querySelector('.font-bold')?.textContent || '??';
-        const isOnline = element.querySelector('.online-indicator')?.style.display !== 'none';
+        const nameElement = element.querySelector('.font-medium');
+        const initialsElement = element.querySelector('.font-bold');
+        const avatarElement = element.querySelector('.rounded-full');
+        const onlineIndicator = element.querySelector('.online-indicator');
+        
+        const name = nameElement ? nameElement.textContent.trim() : '';
+        const initials = initialsElement ? initialsElement.textContent.trim() : '??';
+        const isOnline = onlineIndicator && window.getComputedStyle(onlineIndicator).display !== 'none';
+        
+        // Find avatar color class
+        let avatarColor = 'bg-dark-teal';
+        if (avatarElement) {
+            const classes = avatarElement.className.split(' ');
+            const colorClass = classes.find(c => c.startsWith('bg-'));
+            if (colorClass) avatarColor = colorClass;
+        }
         
         // Update header
-        document.getElementById('chatPerson').textContent = name;
-        document.getElementById('chatAvatar').textContent = initials;
-        document.getElementById('chatAvatar').className = `w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg mr-3 ${element.querySelector('.rounded-full').className.split(' ').find(c => c.startsWith('bg-')) || 'bg-dark-teal'}`;
+        const chatPerson = document.getElementById('chatPerson');
+        const chatAvatar = document.getElementById('chatAvatar');
+        const chatOnlineStatus = document.getElementById('chatOnlineStatus');
+        
+        if (chatPerson) chatPerson.textContent = name;
+        if (chatAvatar) {
+            chatAvatar.textContent = initials;
+            chatAvatar.className = `w-10 h-10 rounded-full ${avatarColor} flex items-center justify-center text-white font-bold text-lg mr-3`;
+        }
         
         // Update online status
-        const onlineStatus = document.getElementById('chatOnlineStatus');
-        onlineStatus.style.display = isOnline ? 'block' : 'none';
+        if (chatOnlineStatus) {
+            chatOnlineStatus.style.display = isOnline ? 'block' : 'none';
+        }
     }
     
     function updateChatHeaderWithUserInfo(userInfo) {
-        document.getElementById('chatPerson').textContent = userInfo.name;
-        document.getElementById('chatRole').textContent = userInfo.role || 'Team Member';
-        document.getElementById('chatAvatar').textContent = userInfo.initials;
-        document.getElementById('chatAvatar').className = `w-10 h-10 rounded-full ${userInfo.avatar_color || 'bg-dark-teal'} flex items-center justify-center text-white font-bold text-lg mr-3`;
+        const chatPerson = document.getElementById('chatPerson');
+        const chatRole = document.getElementById('chatRole');
+        const chatAvatar = document.getElementById('chatAvatar');
+        const chatOnlineStatus = document.getElementById('chatOnlineStatus');
         
-        const onlineStatus = document.getElementById('chatOnlineStatus');
-        onlineStatus.style.display = userInfo.is_online ? 'block' : 'none';
+        if (chatPerson) chatPerson.textContent = userInfo.name || '';
+        if (chatRole) chatRole.textContent = userInfo.role || 'Team Member';
+        if (chatAvatar) {
+            chatAvatar.textContent = userInfo.initials || '??';
+            chatAvatar.className = `w-10 h-10 rounded-full ${userInfo.avatar_color || 'bg-dark-teal'} flex items-center justify-center text-white font-bold text-lg mr-3`;
+            chatAvatar.innerHTML = '';
+        }
+        
+        if (chatOnlineStatus) {
+            chatOnlineStatus.style.display = userInfo.is_online ? 'block' : 'none';
+        }
     }
     
     function sendMessage() {
         const input = document.getElementById('messageInput');
+        if (!input) return;
+        
         const message = input.value.trim();
         
         if (!message || !currentConversationUserId) {
@@ -1102,7 +1343,9 @@
         console.log('Handling incoming message:', data);
         
         // Check if this message is for the current conversation
-        if (data.sender_id == currentConversationUserId) {
+        const isForCurrentConversation = data.sender_id == currentConversationUserId;
+        
+        if (isForCurrentConversation) {
             // Message from the current conversation
             addMessageToUI({
                 sender_id: data.sender_id,
@@ -1115,14 +1358,16 @@
             });
             
             // Send read receipt
-            sendReadReceipt(data.message_id);
+            if (data.message_id) {
+                sendReadReceipt(data.message_id);
+            }
             
             // Mark as read in database
             markMessagesAsRead(data.sender_id);
             
         } else {
             // Message from another conversation
-                showBrowserNotification(data);
+            showBrowserNotification(data);
             updateConversationList(data);
             updateUnreadCount();
         }
@@ -1130,6 +1375,7 @@
     
     function addMessageToUI(messageData) {
         const container = document.getElementById('messagesContainer');
+        if (!container) return;
         
         // Check if container has the "no messages" message
         if (container.querySelector('.text-center')) {
@@ -1139,7 +1385,9 @@
         // Check if we need a date separator for today
         const today = new Date().toDateString();
         const lastDateSeparator = container.querySelector('.message-date-separator:last-child');
-        if (!lastDateSeparator || !lastDateSeparator.textContent.includes('Today')) {
+        const lastDateSpan = lastDateSeparator ? lastDateSeparator.querySelector('span') : null;
+        
+        if (!lastDateSeparator || (lastDateSpan && !lastDateSpan.textContent.includes('Today'))) {
             const dateSeparator = document.createElement('div');
             dateSeparator.className = 'message-date-separator';
             dateSeparator.innerHTML = `<span>Today</span>`;
@@ -1191,11 +1439,13 @@
             const indicator = document.getElementById('typingIndicator');
             const typingUser = document.getElementById('typingUser');
             
-            if (data.is_typing) {
-                typingUser.textContent = data.sender_name;
-                indicator.classList.remove('hidden');
-            } else {
-                indicator.classList.add('hidden');
+            if (indicator && typingUser) {
+                if (data.is_typing) {
+                    typingUser.textContent = data.sender_name;
+                    indicator.classList.remove('hidden');
+                } else {
+                    indicator.classList.add('hidden');
+                }
             }
         }
     }
@@ -1269,26 +1519,36 @@
                 btn.classList.add('bg-gray-100', 'text-gray-700');
             }
         });
-        document.getElementById(`filter${filter.charAt(0).toUpperCase() + filter.slice(1)}`).classList.remove('bg-gray-100', 'text-gray-700');
-        document.getElementById(`filter${filter.charAt(0).toUpperCase() + filter.slice(1)}`).classList.add('bg-dark-teal', 'text-white');
+        
+        const activeFilterBtn = document.getElementById(`filter${filter.charAt(0).toUpperCase() + filter.slice(1)}`);
+        if (activeFilterBtn) {
+            activeFilterBtn.classList.remove('bg-gray-100', 'text-gray-700');
+            activeFilterBtn.classList.add('bg-dark-teal', 'text-white');
+        }
     }
     
     function searchConversations(query) {
         const items = document.querySelectorAll('.conversation-item');
         items.forEach(item => {
-            const name = item.querySelector('h4').textContent.toLowerCase();
-            const message = item.querySelector('p.text-sm').textContent.toLowerCase();
+            const nameElement = item.querySelector('h4');
+            const messageElement = item.querySelector('p.text-sm');
             
-            if (name.includes(query.toLowerCase()) || message.includes(query.toLowerCase())) {
-                item.style.display = 'flex';
-            } else {
-                item.style.display = 'none';
+            if (nameElement && messageElement) {
+                const name = nameElement.textContent.toLowerCase();
+                const message = messageElement.textContent.toLowerCase();
+                
+                if (name.includes(query.toLowerCase()) || message.includes(query.toLowerCase())) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
             }
         });
     }
     
     function addToConversationsList(userId, userName) {
         const container = document.getElementById('conversationsList');
+        if (!container) return;
         
         // Check if already in list
         const existing = Array.from(container.querySelectorAll('.conversation-item')).find(item => 
@@ -1331,6 +1591,8 @@
     
     function updateConversationList(messageData) {
         const container = document.getElementById('conversationsList');
+        if (!container) return;
+        
         const items = container.querySelectorAll('.conversation-item');
         
         // Find conversation with this user
@@ -1428,7 +1690,7 @@
         }
         
         // Show notification
-            if (Notification.permission === "granted") {
+        if (Notification.permission === "granted") {
             new Notification(`New message from ${messageData.sender_name}`, {
                 body: messageData.content.length > 100 ? 
                       messageData.content.substring(0, 100) + '...' : 
@@ -1456,6 +1718,8 @@
     
     function showErrorMessage(message) {
         const container = document.getElementById('messagesContainer');
+        if (!container) return;
+        
         container.innerHTML = `
             <div class="text-center py-8 text-gray-500">
                 <i class="fas fa-exclamation-triangle text-2xl mb-2"></i>
