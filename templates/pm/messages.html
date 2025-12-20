@@ -59,6 +59,7 @@
         color: white;
     }
     
+    /* Initial states */
     #chatArea {
         display: none;
     }
@@ -90,18 +91,37 @@
         border: 1px solid #e2e8f0;
     }
     
+    /* Modal styles */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .modal.active {
+        display: flex;
+    }
+    
+    .modal-content {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        max-width: 90%;
+        width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    
     /* Responsive styles */
     .mobile-sidebar-toggle {
         display: none;
-        position: fixed;
-        top: 1rem;
-        left: 1rem;
-        z-index: 40;
-        background-color: #005f73;
-        color: white;
-        padding: 0.5rem;
-        border-radius: 50%;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     }
     
     .mobile-back-button {
@@ -109,16 +129,51 @@
     }
     
     @media (max-width: 768px) {
-        .mobile-sidebar-toggle {
-            display: block;
-            bottom: 4rem;
+        /* Mobile initial states */
+        #conversationsSidebar {
+            display: flex !important;
         }
-        #messagesContainer {
-        padding-bottom: 3.5rem;
-    }
         
-        .mobile-back-button {
-            display: block;
+        #chatArea {
+            display: none !important;
+        }
+        
+        #noChatSelected {
+            display: none !important;
+        }
+        
+        /* Active states for mobile */
+        #conversationsSidebar.active {
+            display: flex !important;
+            transform: translateX(0);
+        }
+        
+        #chatArea.active {
+            display: flex !important;
+        }
+        
+        #noChatSelected.active {
+            display: flex !important;
+        }
+        
+        /* Mobile sidebar specific styles */
+        .mobile-sidebar-toggle {
+            display: flex;
+            position: fixed;
+            bottom: 4rem;
+            left: 1rem;
+            z-index: 100;
+            background-color: #005f73;
+            color: white;
+            padding: 0.75rem;
+            border-radius: 50%;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            width: 56px;
+            height: 56px;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            cursor: pointer;
         }
         
         #conversationsSidebar {
@@ -127,7 +182,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 30;
+            z-index: 50;
             transform: translateX(-100%);
             transition: transform 0.3s ease-in-out;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
@@ -143,22 +198,51 @@
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 20;
+            z-index: 40;
             background-color: white;
         }
         
-        #noChatSelected {
-            padding: 1rem;
+        #noChatSelected.active {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 40;
+            background-color: white;
         }
         
-        .modal-content {
-            margin: 1rem;
-            max-height: calc(100vh - 2rem);
-            overflow-y: auto;
+        .mobile-back-button {
+            display: flex;
+            align-items: center;
+            background: none;
+            border: none;
+            color: #005f73;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 8px;
+            margin-right: 8px;
         }
         
-        .message-sent, .message-received {
-            max-width: 90%;
+        #closeMessagesSidebar {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            z-index: 10;
+            background-color: #005f73;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        
+        .message-input-container {
+            padding-bottom: 4rem !important;
         }
         
         .conversation-item {
@@ -187,7 +271,6 @@
         
         .message-input-container {
             padding: 0.75rem !important;
-            padding-bottom: 4rem;
         }
         
         .message-input {
@@ -199,7 +282,6 @@
             width: 2.5rem !important;
             height: 2.5rem !important;
             font-size: 0.875rem !important;
-            margin-right: 0.5rem !important;
         }
         
         .avatar-small {
@@ -220,22 +302,51 @@
             font-size: 0.875rem !important;
         }
     }
+    
+    /* Desktop styles */
+    @media (min-width: 769px) {
+        #conversationsSidebar {
+            display: flex !important;
+        }
+        
+        #noChatSelected {
+            display: flex !important;
+        }
+        
+        #chatArea {
+            display: none !important;
+        }
+        
+        #chatArea.active {
+            display: flex !important;
+        }
+        
+        #noChatSelected.active {
+            display: flex !important;
+        }
+        
+        .mobile-sidebar-toggle,
+        .mobile-back-button,
+        #closeMessagesSidebar {
+            display: none !important;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="flex-1 overflow-hidden flex relative">
     <!-- Mobile Toggle Button -->
-<button id="mobileMessagesToggle" class="mobile-messages-toggle fixed bottom-4 left-4 z-30 md:hidden bg-dark-teal text-white p-2 rounded-full shadow-lg">
-    <i class="fas fa-comments"></i>
-</button>
+    <button id="mobileMessagesToggle" class="mobile-sidebar-toggle">
+        <i class="fas fa-comments text-lg"></i>
+    </button>
     
     <!-- Conversations Sidebar -->
     <div id="conversationsSidebar" class="w-full md:w-1/3 lg:w-1/4 xl:w-1/3 bg-white border-r border-gray-200 flex flex-col">
         <!-- Close Button for Mobile -->
-        <button id="closeMessagesSidebar" class="absolute top-4 right-4 z-10 md:hidden bg-dark-teal text-white p-2 rounded-full">
-    <i class="fas fa-times"></i>
-</button>
+        <button id="closeMessagesSidebar" class="absolute top-4 right-4 z-10 md:hidden">
+            <i class="fas fa-times"></i>
+        </button>
         
         <!-- Search and Filters -->
         <div class="p-4 border-b border-gray-200">
@@ -336,24 +447,26 @@
         </div>
     </div>
     
-    <!-- Chat Area - Initially hidden -->
+    <!-- Chat Area -->
     <div id="chatArea" class="flex-1 flex flex-col w-full">
         <!-- Chat Header -->
         <div class="bg-white border-b border-gray-200 p-4 flex justify-between items-center chat-header">
             <div class="flex items-center">
                 <!-- Back Button for Mobile -->
-                <button id="backToConversations" class="mobile-back-button mr-2 text-dark-teal">
-                    <i class="fas fa-arrow-left"></i>
+                <button id="backToConversations" class="mobile-back-button">
+                    <i class="fas fa-arrow-left mr-2"></i>
                 </button>
-                <div class="relative">
-                    <div id="chatAvatar" class="w-10 h-10 rounded-full bg-dark-teal flex items-center justify-center text-white font-bold">
-                        <!-- Initials will be set by JavaScript -->
+                <div class="flex items-center">
+                    <div class="relative">
+                        <div id="chatAvatar" class="w-10 h-10 rounded-full bg-dark-teal flex items-center justify-center text-white font-bold">
+                            <!-- Initials will be set by JavaScript -->
+                        </div>
+                        <div id="chatOnlineStatus" class="online-indicator" style="display: none;"></div>
                     </div>
-                    <div id="chatOnlineStatus" class="online-indicator" style="display: none;"></div>
-                </div>
-                <div class="ml-3 min-w-0">
-                    <h3 id="chatUserName" class="font-medium text-ink-black truncate"></h3>
-                    <p id="chatUserRole" class="text-xs text-gray-500 truncate"></p>
+                    <div class="ml-3 min-w-0">
+                        <h3 id="chatUserName" class="font-medium text-ink-black truncate"></h3>
+                        <p id="chatUserRole" class="text-xs text-gray-500 truncate"></p>
+                    </div>
                 </div>
             </div>
             <div class="flex space-x-2">
@@ -477,74 +590,132 @@
     // Detect screen size changes
     window.addEventListener('resize', function() {
         isMobile = window.innerWidth < 768;
+        if (isMobile) {
+            // Ensure mobile navigation is properly set up
+            setupMobileNavigation();
+        }
     });
     
     // Initialize when page loads
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('Initializing messages page...');
+        
+        // Set initial states
+        setupInitialDisplay();
+        
+        // Setup mobile navigation
+        setupMobileNavigation();
+        
+        // Initialize WebSocket and other components
         initializeWebSocket();
         setupEventListeners();
         updateUnreadCount();
-        
-        // Mobile sidebar setup
-        setupMobileNavigation();
         
         // Request notification permission
         if ("Notification" in window) {
             Notification.requestPermission();
         }
+        
+        console.log('Messages page initialized');
     });
     
-  function setupMobileNavigation() {
-    const sidebar = document.getElementById('conversationsSidebar');
-    const toggleBtn = document.getElementById('mobileMessagesToggle');
-    const closeBtn = document.getElementById('closeMessagesSidebar'); // Updated ID
-    const backBtn = document.getElementById('backToConversations');
-    
-    if (!isMobile) {
-        sidebar.classList.remove('conversations-sidebar');
-        sidebar.classList.add('block');
-        return;
+    function setupInitialDisplay() {
+        const sidebar = document.getElementById('conversationsSidebar');
+        const chatArea = document.getElementById('chatArea');
+        const noChatSelected = document.getElementById('noChatSelected');
+        
+        // Check if we're on mobile
+        isMobile = window.innerWidth < 768;
+        
+        if (isMobile) {
+            // Mobile: Show sidebar, hide chat area and no chat view
+            if (sidebar) sidebar.classList.add('active');
+            if (chatArea) chatArea.classList.remove('active');
+            if (noChatSelected) noChatSelected.classList.remove('active');
+            
+            // Hide mobile toggle button if sidebar is active
+            const toggleBtn = document.getElementById('mobileMessagesToggle');
+            if (toggleBtn && sidebar.classList.contains('active')) {
+                toggleBtn.style.display = 'none';
+            }
+        } else {
+            // Desktop: Show sidebar and no chat view, hide chat area
+            if (sidebar) sidebar.classList.add('active');
+            if (noChatSelected) noChatSelected.classList.add('active');
+            if (chatArea) chatArea.classList.remove('active');
+        }
     }
     
-    // Initially show the toggle button
-    toggleBtn.style.display = 'flex';
-    
-    // Toggle sidebar
-    toggleBtn.addEventListener('click', function() {
-        sidebar.classList.add('active');
-        document.getElementById('chatArea').classList.remove('active');
-        document.getElementById('noChatSelected').style.display = 'flex';
-        this.style.display = 'none';
-    });
-    
-    // Close sidebar
-    closeBtn.addEventListener('click', function() {
-        sidebar.classList.remove('active');
-        toggleBtn.style.display = 'flex';
-    });
-    
-    // Back to conversations from chat
-    backBtn.addEventListener('click', function() {
-        sidebar.classList.add('active');
-        document.getElementById('chatArea').classList.remove('active');
-        toggleBtn.style.display = 'none';
-    });
-    
-    // Close sidebar when clicking outside on mobile
-    document.addEventListener('click', function(event) {
-        if (isMobile && 
-            sidebar.classList.contains('active') && 
-            !sidebar.contains(event.target) && 
-            !toggleBtn.contains(event.target) &&
-            event.target !== toggleBtn) {
-            sidebar.classList.remove('active');
-            toggleBtn.style.display = 'flex';
+    function setupMobileNavigation() {
+        const sidebar = document.getElementById('conversationsSidebar');
+        const chatArea = document.getElementById('chatArea');
+        const noChatSelected = document.getElementById('noChatSelected');
+        const toggleBtn = document.getElementById('mobileMessagesToggle');
+        const closeBtn = document.getElementById('closeMessagesSidebar');
+        const backBtn = document.getElementById('backToConversations');
+        
+        // If not mobile, hide mobile-specific buttons
+        if (!isMobile) {
+            if (toggleBtn) toggleBtn.style.display = 'none';
+            if (closeBtn) closeBtn.style.display = 'none';
+            if (backBtn) backBtn.style.display = 'none';
+            return;
         }
-    });
-}
-
-
-
+        
+        // Ensure buttons are visible on mobile
+        if (toggleBtn) toggleBtn.style.display = 'flex';
+        if (closeBtn) closeBtn.style.display = 'flex';
+        if (backBtn) backBtn.style.display = 'flex';
+        
+        // Toggle sidebar when clicking toggle button
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (sidebar) {
+                    sidebar.classList.add('active');
+                    toggleBtn.style.display = 'none';
+                }
+                if (chatArea) chatArea.classList.remove('active');
+                if (noChatSelected) noChatSelected.classList.remove('active');
+            });
+        }
+        
+        // Close sidebar when clicking close button
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (sidebar) sidebar.classList.remove('active');
+                if (toggleBtn) toggleBtn.style.display = 'flex';
+            });
+        }
+        
+        // Back button to return to conversations
+        if (backBtn) {
+            backBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (sidebar) {
+                    sidebar.classList.add('active');
+                    if (toggleBtn) toggleBtn.style.display = 'none';
+                }
+                if (chatArea) chatArea.classList.remove('active');
+                if (noChatSelected) noChatSelected.classList.remove('active');
+            });
+        }
+        
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            if (!isMobile) return;
+            
+            if (sidebar && sidebar.classList.contains('active') && 
+                !sidebar.contains(event.target) && 
+                !event.target.closest('#mobileMessagesToggle') &&
+                event.target.id !== 'mobileMessagesToggle') {
+                sidebar.classList.remove('active');
+                if (toggleBtn) toggleBtn.style.display = 'flex';
+            }
+        });
+    }
+    
     function initializeWebSocket() {
         const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
         const wsUrl = protocol + window.location.host + '/ws/messages/';
@@ -620,134 +791,164 @@
     
     function setupEventListeners() {
         // Conversation list clicks
-        document.getElementById('conversationsList').addEventListener('click', function(e) {
-            const item = e.target.closest('.conversation-item');
-            if (item) {
-                e.preventDefault();
-                const userId = item.getAttribute('data-user-id');
-                const conversationId = item.getAttribute('data-conversation-id');
-                selectConversation(userId, conversationId, item);
-                
-                // On mobile, switch to chat view
-                if (isMobile) {
-                    const sidebar = document.getElementById('conversationsSidebar');
-                    const toggleBtn = document.getElementById('mobileConversationsToggle');
-                    const noChatView = document.getElementById('noChatSelected');
-                    sidebar.classList.remove('active');
-                    document.getElementById('chatArea').classList.add('active');
-                    noChatView.style.display = 'none';
-                    toggleBtn.style.display = 'block';
+        const conversationsList = document.getElementById('conversationsList');
+        if (conversationsList) {
+            conversationsList.addEventListener('click', function(e) {
+                const item = e.target.closest('.conversation-item');
+                if (item) {
+                    e.preventDefault();
+                    const userId = item.getAttribute('data-user-id');
+                    const conversationId = item.getAttribute('data-conversation-id');
+                    selectConversation(userId, conversationId, item);
                 }
-            }
-        });
+            });
+        }
         
         // Team member clicks
-        document.getElementById('teamMembersList').addEventListener('click', function(e) {
-            const item = e.target.closest('.team-member-item');
-            if (item) {
-                e.preventDefault();
-                const userId = item.getAttribute('data-user-id');
-                const userName = item.getAttribute('data-name');
-                startNewConversation(userId, userName);
-                
-                // On mobile, switch to chat view
-                if (isMobile) {
-                    const sidebar = document.getElementById('conversationsSidebar');
-                    const toggleBtn = document.getElementById('mobileConversationsToggle');
-                    const noChatView = document.getElementById('noChatSelected');
-                    sidebar.classList.remove('active');
-                    document.getElementById('chatArea').classList.add('active');
-                    noChatView.style.display = 'none';
-                    toggleBtn.style.display = 'block';
+        const teamMembersList = document.getElementById('teamMembersList');
+        if (teamMembersList) {
+            teamMembersList.addEventListener('click', function(e) {
+                const item = e.target.closest('.team-member-item');
+                if (item) {
+                    e.preventDefault();
+                    const userId = item.getAttribute('data-user-id');
+                    const userName = item.getAttribute('data-name');
+                    startNewConversation(userId, userName);
                 }
-            }
-        });
+            });
+        }
         
         // Start new conversation button
-        document.getElementById('startNewFromList').addEventListener('click', function() {
-            document.getElementById('searchUsers').focus();
-        });
+        const startNewBtn = document.getElementById('startNewFromList');
+        if (startNewBtn) {
+            startNewBtn.addEventListener('click', function() {
+                const searchInput = document.getElementById('searchUsers');
+                if (searchInput) searchInput.focus();
+            });
+        }
         
         // Filter buttons
-        document.getElementById('filterAll').addEventListener('click', () => filterConversations('all'));
-        document.getElementById('filterUnread').addEventListener('click', () => filterConversations('unread'));
-        document.getElementById('filterOnline').addEventListener('click', () => filterConversations('online'));
+        const filterAll = document.getElementById('filterAll');
+        const filterUnread = document.getElementById('filterUnread');
+        const filterOnline = document.getElementById('filterOnline');
+        
+        if (filterAll) filterAll.addEventListener('click', () => filterConversations('all'));
+        if (filterUnread) filterUnread.addEventListener('click', () => filterConversations('unread'));
+        if (filterOnline) filterOnline.addEventListener('click', () => filterConversations('online'));
         
         // Send message button
-        document.getElementById('sendMessageBtn').addEventListener('click', sendMessage);
+        const sendMessageBtn = document.getElementById('sendMessageBtn');
+        if (sendMessageBtn) {
+            sendMessageBtn.addEventListener('click', sendMessage);
+        }
         
         // Send message on Enter key
-        document.getElementById('messageInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            }
-        });
-        
-        // Typing indicator
-        document.getElementById('messageInput').addEventListener('input', function() {
-            sendTypingIndicator(true);
-            clearTimeout(typingTimeout);
-            typingTimeout = setTimeout(() => {
-                sendTypingIndicator(false);
-            }, 1000);
-        });
-        
-        // Enable/disable message input based on selection
-        document.getElementById('messageInput').addEventListener('focus', function() {
-            if (!currentConversationUserId) {
-                this.blur();
-                alert('Please select a conversation first');
-            }
-        });
+        const messageInput = document.getElementById('messageInput');
+        if (messageInput) {
+            messageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+            
+            // Typing indicator
+            messageInput.addEventListener('input', function() {
+                sendTypingIndicator(true);
+                clearTimeout(typingTimeout);
+                typingTimeout = setTimeout(() => {
+                    sendTypingIndicator(false);
+                }, 1000);
+            });
+        }
         
         // Chat info button
-        document.getElementById('chatInfoBtn').addEventListener('click', showChatInfo);
+        const chatInfoBtn = document.getElementById('chatInfoBtn');
+        if (chatInfoBtn) {
+            chatInfoBtn.addEventListener('click', showChatInfo);
+        }
         
         // Close chat info modal
-        document.getElementById('closeChatInfoBtn').addEventListener('click', function() {
-            document.getElementById('chatInfoModal').classList.remove('active');
-        });
+        const closeChatInfoBtn = document.getElementById('closeChatInfoBtn');
+        if (closeChatInfoBtn) {
+            closeChatInfoBtn.addEventListener('click', function() {
+                const modal = document.getElementById('chatInfoModal');
+                if (modal) modal.classList.remove('active');
+            });
+        }
         
         // Close modal when clicking outside
-        document.getElementById('chatInfoModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                this.classList.remove('active');
-            }
-        });
+        const chatInfoModal = document.getElementById('chatInfoModal');
+        if (chatInfoModal) {
+            chatInfoModal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.classList.remove('active');
+                }
+            });
+        }
         
         // Search users
-        document.getElementById('searchUsers').addEventListener('input', debounce(function() {
-            searchUsers(this.value);
-        }, 300));
+        const searchUsers = document.getElementById('searchUsers');
+        if (searchUsers) {
+            searchUsers.addEventListener('input', debounce(function() {
+                searchUsers(this.value);
+            }, 300));
+        }
         
         // Close modal on escape key
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
-                document.getElementById('chatInfoModal').classList.remove('active');
+                const modal = document.getElementById('chatInfoModal');
+                if (modal) modal.classList.remove('active');
             }
         });
     }
     
     function selectConversation(userId, conversationId, element) {
+        console.log('Selecting conversation:', userId, conversationId);
+        
         // Update UI
         document.querySelectorAll('.conversation-item').forEach(item => {
             item.classList.remove('conversation-active');
         });
-        element.classList.add('conversation-active');
+        
+        if (element) {
+            element.classList.add('conversation-active');
+        }
         
         // Set current conversation
         currentConversationUserId = userId;
         currentConversationId = conversationId;
         
-        // Show chat area, hide no chat view
-        document.getElementById('noChatSelected').style.display = 'none';
-        document.getElementById('chatArea').classList.add('active');
+        // Get DOM elements
+        const sidebar = document.getElementById('conversationsSidebar');
+        const chatArea = document.getElementById('chatArea');
+        const noChatSelected = document.getElementById('noChatSelected');
+        const toggleBtn = document.getElementById('mobileMessagesToggle');
+        
+        // Update active states
+        if (isMobile) {
+            // On mobile: Show chat area, hide sidebar and no chat view
+            if (sidebar) sidebar.classList.remove('active');
+            if (chatArea) chatArea.classList.add('active');
+            if (noChatSelected) noChatSelected.classList.remove('active');
+            if (toggleBtn) toggleBtn.style.display = 'none';
+        } else {
+            // On desktop: Show chat area, hide no chat view
+            if (chatArea) chatArea.classList.add('active');
+            if (noChatSelected) noChatSelected.classList.remove('active');
+        }
         
         // Enable message input
-        document.getElementById('messageInput').disabled = false;
-        document.getElementById('sendMessageBtn').disabled = false;
-        document.getElementById('messageInput').focus();
+        const messageInput = document.getElementById('messageInput');
+        const sendMessageBtn = document.getElementById('sendMessageBtn');
+        
+        if (messageInput) {
+            messageInput.disabled = false;
+            messageInput.focus();
+        }
+        
+        if (sendMessageBtn) sendMessageBtn.disabled = false;
         
         // Load conversation messages
         loadConversationMessages(userId);
@@ -756,44 +957,75 @@
         markMessagesAsRead(userId);
         
         // Update conversation list (remove unread badge)
-        const unreadBadge = element.querySelector('.unread-badge');
-        if (unreadBadge) {
-            unreadBadge.remove();
+        if (element) {
+            const unreadBadge = element.querySelector('.unread-badge');
+            if (unreadBadge) {
+                unreadBadge.remove();
+            }
         }
         
         // Update header with user info
-        updateChatHeader(element);
+        if (element) {
+            updateChatHeader(element);
+        }
     }
     
     function startNewConversation(userId, userName) {
+        console.log('Starting new conversation with:', userId, userName);
+        
         currentConversationUserId = userId;
         currentConversationId = `conv_{{ user.id }}_${userId}`;
         
-        // Show chat area
-        document.getElementById('noChatSelected').style.display = 'none';
-        document.getElementById('chatArea').classList.add('active');
+        // Get DOM elements
+        const sidebar = document.getElementById('conversationsSidebar');
+        const chatArea = document.getElementById('chatArea');
+        const noChatSelected = document.getElementById('noChatSelected');
+        const toggleBtn = document.getElementById('mobileMessagesToggle');
+        
+        // Update UI
+        if (isMobile) {
+            // On mobile: Show chat area, hide sidebar and no chat view
+            if (sidebar) sidebar.classList.remove('active');
+            if (chatArea) chatArea.classList.add('active');
+            if (noChatSelected) noChatSelected.classList.remove('active');
+            if (toggleBtn) toggleBtn.style.display = 'none';
+        } else {
+            // On desktop: Show chat area, hide no chat view
+            if (chatArea) chatArea.classList.add('active');
+            if (noChatSelected) noChatSelected.classList.remove('active');
+        }
         
         // Enable message input
-        document.getElementById('messageInput').disabled = false;
-        document.getElementById('sendMessageBtn').disabled = false;
+        const messageInput = document.getElementById('messageInput');
+        const sendMessageBtn = document.getElementById('sendMessageBtn');
+        
+        if (messageInput) {
+            messageInput.disabled = false;
+            messageInput.focus();
+        }
+        
+        if (sendMessageBtn) sendMessageBtn.disabled = false;
         
         // Set up chat header with basic info
-        document.getElementById('chatUserName').textContent = userName;
-        document.getElementById('chatAvatar').textContent = userName.substring(0, 2).toUpperCase();
-        document.getElementById('chatUserRole').textContent = 'Team Member';
+        const chatUserName = document.getElementById('chatUserName');
+        const chatAvatar = document.getElementById('chatAvatar');
+        const chatUserRole = document.getElementById('chatUserRole');
+        
+        if (chatUserName) chatUserName.textContent = userName;
+        if (chatAvatar) chatAvatar.textContent = userName.substring(0, 2).toUpperCase();
+        if (chatUserRole) chatUserRole.textContent = 'Team Member';
         
         // Clear messages container
         const container = document.getElementById('messagesContainer');
-        container.innerHTML = `
-            <div class="text-center py-8 text-gray-500">
-                <i class="fas fa-comment-alt text-3xl mb-4"></i>
-                <p>Start a conversation with ${userName}</p>
-                <p class="text-sm mt-1">Send your first message to begin</p>
-            </div>
-        `;
-        
-        // Focus on message input
-        document.getElementById('messageInput').focus();
+        if (container) {
+            container.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <i class="fas fa-comment-alt text-3xl mb-4"></i>
+                    <p>Start a conversation with ${userName}</p>
+                    <p class="text-sm mt-1">Send your first message to begin</p>
+                </div>
+            `;
+        }
         
         // Add to conversations list if not already there
         addToConversationsList(userId, userName);
@@ -801,6 +1033,8 @@
     
     function loadConversationMessages(userId) {
         const container = document.getElementById('messagesContainer');
+        if (!container) return;
+        
         container.innerHTML = `
             <div class="text-center py-8 text-gray-500">
                 <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
@@ -827,6 +1061,7 @@
     
     function displayMessages(messages, otherUser) {
         const container = document.getElementById('messagesContainer');
+        if (!container) return;
         
         if (!messages || messages.length === 0) {
             container.innerHTML = `
@@ -921,35 +1156,69 @@
     }
     
     function updateChatHeader(element) {
+        if (!element) return;
+        
         // Extract info from conversation element
-        const name = element.querySelector('.font-medium')?.textContent || '';
-        const initials = element.querySelector('.font-bold')?.textContent || '??';
-        const role = element.querySelector('.text-gray-500')?.textContent || 'Team Member';
-        const isOnline = element.querySelector('.online-indicator')?.style.display !== 'none';
+        const nameElement = element.querySelector('.font-medium');
+        const initialsElement = element.querySelector('.font-bold');
+        const roleElement = element.querySelector('.text-gray-500.truncate');
+        const avatarElement = element.querySelector('.rounded-full');
+        const onlineIndicator = element.querySelector('.online-indicator');
+        
+        const name = nameElement ? nameElement.textContent.trim() : '';
+        const initials = initialsElement ? initialsElement.textContent.trim() : '??';
+        const role = roleElement ? roleElement.textContent.trim() : 'Team Member';
+        const isOnline = onlineIndicator && window.getComputedStyle(onlineIndicator).display !== 'none';
+        
+        // Find avatar color class
+        let avatarColor = 'bg-dark-teal';
+        if (avatarElement) {
+            const classes = avatarElement.className.split(' ');
+            const colorClass = classes.find(c => c.startsWith('bg-'));
+            if (colorClass) avatarColor = colorClass;
+        }
         
         // Update header
-        document.getElementById('chatUserName').textContent = name;
-        document.getElementById('chatUserRole').textContent = role;
-        document.getElementById('chatAvatar').textContent = initials;
-        document.getElementById('chatAvatar').className = `w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${element.querySelector('.rounded-full').className.split(' ').find(c => c.startsWith('bg-')) || 'bg-dark-teal'}`;
+        const chatUserName = document.getElementById('chatUserName');
+        const chatUserRole = document.getElementById('chatUserRole');
+        const chatAvatar = document.getElementById('chatAvatar');
+        const chatOnlineStatus = document.getElementById('chatOnlineStatus');
+        
+        if (chatUserName) chatUserName.textContent = name;
+        if (chatUserRole) chatUserRole.textContent = role;
+        if (chatAvatar) {
+            chatAvatar.textContent = initials;
+            chatAvatar.className = `w-10 h-10 rounded-full ${avatarColor} flex items-center justify-center text-white font-bold`;
+        }
         
         // Update online status
-        const onlineStatus = document.getElementById('chatOnlineStatus');
-        onlineStatus.style.display = isOnline ? 'block' : 'none';
+        if (chatOnlineStatus) {
+            chatOnlineStatus.style.display = isOnline ? 'block' : 'none';
+        }
     }
     
     function updateChatHeaderWithUserInfo(userInfo) {
-        document.getElementById('chatUserName').textContent = userInfo.name;
-        document.getElementById('chatUserRole').textContent = userInfo.job_position || 'Team Member';
-        document.getElementById('chatAvatar').textContent = userInfo.initials;
-        document.getElementById('chatAvatar').className = `w-10 h-10 rounded-full ${userInfo.avatar_color || 'bg-dark-teal'} flex items-center justify-center text-white font-bold`;
+        const chatUserName = document.getElementById('chatUserName');
+        const chatUserRole = document.getElementById('chatUserRole');
+        const chatAvatar = document.getElementById('chatAvatar');
+        const chatOnlineStatus = document.getElementById('chatOnlineStatus');
         
-        const onlineStatus = document.getElementById('chatOnlineStatus');
-        onlineStatus.style.display = userInfo.is_online ? 'block' : 'none';
+        if (chatUserName) chatUserName.textContent = userInfo.name || '';
+        if (chatUserRole) chatUserRole.textContent = userInfo.job_position || 'Team Member';
+        if (chatAvatar) {
+            chatAvatar.textContent = userInfo.initials || '??';
+            chatAvatar.className = `w-10 h-10 rounded-full ${userInfo.avatar_color || 'bg-dark-teal'} flex items-center justify-center text-white font-bold`;
+        }
+        
+        if (chatOnlineStatus) {
+            chatOnlineStatus.style.display = userInfo.is_online ? 'block' : 'none';
+        }
     }
     
     function sendMessage() {
         const input = document.getElementById('messageInput');
+        if (!input) return;
+        
         const message = input.value.trim();
         
         if (!message || !currentConversationUserId) {
@@ -1028,10 +1297,9 @@
         console.log('Handling incoming message:', data);
         
         // Check if this message is for the current conversation
-        const isForCurrentConversation = data.sender_id == currentConversationUserId || 
-                                         data.recipient_id == {{ user.id }};
+        const isForCurrentConversation = data.sender_id == currentConversationUserId;
         
-        if (data.sender_id == currentConversationUserId) {
+        if (isForCurrentConversation) {
             // Message from the current conversation
             addMessageToUI({
                 sender_id: data.sender_id,
@@ -1044,7 +1312,9 @@
             });
             
             // Send read receipt
-            sendReadReceipt(data.message_id);
+            if (data.message_id) {
+                sendReadReceipt(data.message_id);
+            }
             
             // Mark as read in database
             markMessagesAsRead(data.sender_id);
@@ -1059,6 +1329,7 @@
     
     function addMessageToUI(messageData) {
         const container = document.getElementById('messagesContainer');
+        if (!container) return;
         
         // Check if container has the "no messages" message
         if (container.querySelector('.text-center')) {
@@ -1068,7 +1339,9 @@
         // Check if we need a date separator for today
         const today = new Date().toDateString();
         const lastDateSeparator = container.querySelector('.message-date-separator:last-child');
-        if (!lastDateSeparator || !lastDateSeparator.textContent.includes('Today')) {
+        const lastDateSpan = lastDateSeparator ? lastDateSeparator.querySelector('span') : null;
+        
+        if (!lastDateSeparator || (lastDateSpan && !lastDateSpan.textContent.includes('Today'))) {
             const dateSeparator = document.createElement('div');
             dateSeparator.className = 'message-date-separator';
             dateSeparator.innerHTML = `<span>Today</span>`;
@@ -1120,11 +1393,13 @@
             const indicator = document.getElementById('typingIndicator');
             const typingUser = document.getElementById('typingUser');
             
-            if (data.is_typing) {
-                typingUser.textContent = data.sender_name;
-                indicator.classList.remove('hidden');
-            } else {
-                indicator.classList.add('hidden');
+            if (indicator && typingUser) {
+                if (data.is_typing) {
+                    typingUser.textContent = data.sender_name;
+                    indicator.classList.remove('hidden');
+                } else {
+                    indicator.classList.add('hidden');
+                }
             }
         }
     }
@@ -1196,12 +1471,16 @@
             btn.classList.remove('filter-active');
             btn.classList.add('bg-gray-100', 'text-gray-700');
         });
-        document.getElementById(`filter${filter.charAt(0).toUpperCase() + filter.slice(1)}`).classList.remove('bg-gray-100', 'text-gray-700');
-        document.getElementById(`filter${filter.charAt(0).toUpperCase() + filter.slice(1)}`).classList.add('filter-active');
+        
+        const activeFilterBtn = document.getElementById(`filter${filter.charAt(0).toUpperCase() + filter.slice(1)}`);
+        if (activeFilterBtn) {
+            activeFilterBtn.classList.remove('bg-gray-100', 'text-gray-700');
+            activeFilterBtn.classList.add('filter-active');
+        }
     }
     
     function searchUsers(query) {
-        if (query.length < 2) {
+        if (!query || query.length < 2) {
             return;
         }
         
@@ -1219,6 +1498,7 @@
     
     function displaySearchResults(results) {
         const container = document.getElementById('conversationsList');
+        if (!container) return;
         
         if (results.length === 0) {
             container.innerHTML = `
@@ -1270,6 +1550,7 @@
     
     function addToConversationsList(userId, userName) {
         const container = document.getElementById('conversationsList');
+        if (!container) return;
         
         // Check if already in list
         const existing = Array.from(container.querySelectorAll('.conversation-item')).find(item => 
@@ -1313,6 +1594,8 @@
     
     function updateConversationList(messageData) {
         const container = document.getElementById('conversationsList');
+        if (!container) return;
+        
         const items = container.querySelectorAll('.conversation-item');
         
         // Find conversation with this user
@@ -1335,7 +1618,7 @@
             }
             
             // Update time
-            const timeElement = conversationItem.querySelector('.text-xs.text-gray-500');
+            const timeElement = conversationItem.querySelector('.text-xs.text-gray-500.whitespace-nowrap');
             if (timeElement) {
                 timeElement.textContent = 'Just now';
             }
@@ -1412,22 +1695,36 @@
             .then(data => {
                 if (data.success) {
                     const modal = document.getElementById('chatInfoModal');
-                    document.getElementById('infoName').textContent = data.name;
-                    document.getElementById('infoJobPosition').textContent = data.job_position || 'Team Member';
-                    document.getElementById('infoEmail').textContent = data.email || 'N/A';
-                    document.getElementById('infoDepartment').textContent = data.department || 'N/A';
-                    document.getElementById('infoProjects').textContent = data.projects || 'N/A';
-                    document.getElementById('infoAvatar').textContent = data.initials || '??';
+                    if (!modal) return;
+                    
+                    const infoName = document.getElementById('infoName');
+                    const infoJobPosition = document.getElementById('infoJobPosition');
+                    const infoEmail = document.getElementById('infoEmail');
+                    const infoDepartment = document.getElementById('infoDepartment');
+                    const infoProjects = document.getElementById('infoProjects');
+                    const infoAvatar = document.getElementById('infoAvatar');
+                    const infoStatus = document.getElementById('infoStatus');
+                    const infoLastSeen = document.getElementById('infoLastSeen');
+                    
+                    if (infoName) infoName.textContent = data.name;
+                    if (infoJobPosition) infoJobPosition.textContent = data.job_position || 'Team Member';
+                    if (infoEmail) infoEmail.textContent = data.email || 'N/A';
+                    if (infoDepartment) infoDepartment.textContent = data.department || 'N/A';
+                    if (infoProjects) infoProjects.textContent = data.projects || 'N/A';
+                    if (infoAvatar) infoAvatar.textContent = data.initials || '??';
                     
                     // Set status
-                    const statusElement = document.getElementById('infoStatus');
-                    if (data.is_online) {
-                        statusElement.textContent = 'Online';
-                        statusElement.className = 'text-xs px-2 py-1 rounded-full bg-green-100 text-green-800';
-                    } else {
-                        statusElement.textContent = 'Offline';
-                        statusElement.className = 'text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-800';
-                        document.getElementById('infoLastSeen').textContent = data.last_seen ? `Last seen ${data.last_seen}` : '';
+                    if (infoStatus) {
+                        if (data.is_online) {
+                            infoStatus.textContent = 'Online';
+                            infoStatus.className = 'text-xs px-2 py-1 rounded-full bg-green-100 text-green-800';
+                        } else {
+                            infoStatus.textContent = 'Offline';
+                            infoStatus.className = 'text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-800';
+                            if (infoLastSeen && data.last_seen) {
+                                infoLastSeen.textContent = `Last seen ${data.last_seen}`;
+                            }
+                        }
                     }
                     
                     modal.classList.add('active');
@@ -1479,6 +1776,8 @@
     
     function showErrorMessage(message) {
         const container = document.getElementById('messagesContainer');
+        if (!container) return;
+        
         container.innerHTML = `
             <div class="text-center py-8 text-gray-500">
                 <i class="fas fa-exclamation-triangle text-2xl mb-2"></i>
