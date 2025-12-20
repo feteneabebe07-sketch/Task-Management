@@ -8,10 +8,8 @@
 
 {% block header_actions %}
 
-<button onclick="openLogTimeModal()" class="btn-secondary text-white px-4 py-2 rounded-xl text-sm font-medium">
-    <i class="fas fa-clock mr-2"></i>
-    Log Time
-</button>
+
+
 {% endblock %}
 
 {% block content %}
@@ -913,10 +911,8 @@
         document.body.style.overflow = 'hidden';
     }
     
-    function openLogTimeModal() {
-        document.getElementById('logTimeModal').classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-    }
+   
+    
     
     function openMessageModal() {
         document.getElementById('messageModal').classList.remove('hidden');
