@@ -91,6 +91,13 @@ def pm_dashboard(request):
             else:
                 project.days_remaining = None
         
+        # FIX: Ensure selected_project also has the calculated progress
+        if selected_project:
+            if selected_project.total_tasks_count > 0:
+                selected_project.progress = int((selected_project.completed_tasks_count / selected_project.total_tasks_count) * 100)
+            else:
+                selected_project.progress = 0
+        
         # Calculate overall statistics across all projects
         all_projects_stats = {
             'total_tasks': sum(p.total_tasks_count for p in managed_projects),
